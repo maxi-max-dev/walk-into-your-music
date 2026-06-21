@@ -34,7 +34,7 @@
   #dataCard .row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-top:1px solid rgba(255,255,255,.08); }
   #dataCard .row span:first-child { opacity:.55; } #dataCard .row span:last-child { font-weight:600; color:var(--primary); text-align:right; max-width:140px; }
 
-  #personaSwitch { top:22px; right:22px; padding:12px; display:flex; flex-direction:column; gap:8px; width:200px; }
+  #personaSwitch { top:22px; right:22px; padding:12px; display:flex; flex-direction:column; gap:8px; width:200px; max-height:calc(100vh - 44px); overflow-y:auto; }
   #personaSwitch .lbl { font-size:11px; letter-spacing:.14em; opacity:.5; padding:2px 6px 6px; }
   #personaSwitch button { pointer-events:auto; padding:11px 14px; text-align:left; border-radius:10px; border:1px solid rgba(255,255,255,.12);
     background:rgba(255,255,255,.04); color:#fff; cursor:pointer; font-size:14px; transition:all .2s; }
@@ -81,6 +81,9 @@
     <button data-persona="neon" class="active">霓虹夜行<span class="sub">Synthwave · The Weeknd…</span></button>
     <button data-persona="folk">晨光民谣<span class="sub">Folk · Bon Iver…</span></button>
     <button data-persona="classical">古典沉思<span class="sub">Neoclassical · Einaudi…</span></button>
+    <button data-persona="cyber">暗潮赛博<span class="sub">Industrial · Billie…</span></button>
+    <button data-persona="nature">山系治愈<span class="sub">Chillwave · Tycho…</span></button>
+    <button data-persona="retro">复古胶片<span class="sub">Soul · EW&amp;F…</span></button>
   </div>
   <div id="nowbar" class="panel">
     <button id="playBtn">❚❚</button>
@@ -108,7 +111,10 @@ import { Reflector } from 'three/addons/objects/Reflector.js';
 const STYLES = {
   neon:      { label:'霓虹电子', amb:0.28, hemi:0.30, dark:true,  pal:{ wall:0x141826, floor:0x0c0e16, ceil:0x0a0c14, strip:0x4dd0ff, light:0xaeccff, accent:0xb14dff, frame:0x2a2f44, text:'#eaf2ff', sub:'#9fb0d8', card:'rgba(14,16,26,.92)' } },
   folk:      { label:'暖阳民谣', amb:0.34, hemi:0.36, dark:true,  pal:{ wall:0x241c14, floor:0x16110b, ceil:0x120d08, strip:0xffd27a, light:0xffe6c0, accent:0x7ad17a, frame:0x40321f, text:'#fff3e0', sub:'#d8c2a0', card:'rgba(20,15,9,.92)' } },
-  classical: { label:'古典优雅', amb:0.80, hemi:0.55, dark:false, pal:{ wall:0xe7e1d4, floor:0xcfc7b8, ceil:0xf2ede2, strip:0xc9a44a, light:0xfff3da, accent:0x9a7b4f, frame:0x4a3a26, text:'#2c2418', sub:'#6f5e46', card:'rgba(244,240,232,.95)' } }
+  classical: { label:'古典优雅', amb:0.80, hemi:0.55, dark:false, pal:{ wall:0xe7e1d4, floor:0xcfc7b8, ceil:0xf2ede2, strip:0xc9a44a, light:0xfff3da, accent:0x9a7b4f, frame:0x4a3a26, text:'#2c2418', sub:'#6f5e46', card:'rgba(244,240,232,.95)' } },
+  cyber:     { label:'赛博暗黑', amb:0.22, hemi:0.26, dark:true,  pal:{ wall:0x10070d, floor:0x080308, ceil:0x0a040a, strip:0xff2d6b, light:0xff6ea6, accent:0xff2d6b, frame:0x2a0d1c, text:'#ffe6f0', sub:'#d79bb6', card:'rgba(16,4,12,.92)' } },
+  nature:    { label:'自然森系', amb:0.36, hemi:0.42, dark:true,  pal:{ wall:0x14241a, floor:0x0c160f, ceil:0x0a140e, strip:0x6ee0a0, light:0xc4eccf, accent:0xe0c060, frame:0x234a32, text:'#eafff0', sub:'#a8d8bb', card:'rgba(12,22,15,.92)' } },
+  retro:     { label:'复古胶片', amb:0.42, hemi:0.42, dark:true,  pal:{ wall:0x5e4a30, floor:0x42331f, ceil:0x52402a, strip:0xffcf8a, light:0xffe2b0, accent:0xff8a5c, frame:0x33271a, text:'#fff0dc', sub:'#d8b88e', card:'rgba(28,20,12,.92)' } }
 };
 
 /* ============ 你的听歌数据（真实歌曲）→ AI 打标签 + 判定主基调 ============ */
@@ -144,6 +150,39 @@ const PROFILES = {
       { song:'Summer',                  artist:'久石让',        plays:151, note:'想念的时候放。', hue:45 },
       { song:"Comptine d'un autre été", artist:'Yann Tiersen', plays:133, note:'雨天清晨的第一首。', hue:160 },
       { song:'River Flows in You',      artist:'Yiruma',       plays:120, note:'点红心最多的一首。', hue:200 }
+    ]
+  },
+  cyber: {
+    name:'暗潮赛博', artist:'Billie Eilish / Justice …', genre:'Industrial · Dark Electro', minutes:14210, mood:'锋利的兴奋',
+    style:'cyber', track:'assets/pool2.mp3', tempo:128, scaleType:'minor', energy:0.9,
+    center:{ song:'bury a friend', artist:'Billie Eilish', plays:301, note:'深夜戴上耳机才敢放的一首。', hue:320 },
+    songs:[
+      { song:'Pursuit',     artist:'Gesaffelstein',  plays:188, note:'健身时单曲循环。', hue:330 },
+      { song:'Not in Love', artist:'Crystal Castles', plays:162, note:'情绪最差那几天的出口。', hue:300 },
+      { song:'Sail',        artist:'AWOLNATION',      plays:150, note:'开车音量最大的一首。', hue:350 },
+      { song:'Genesis',     artist:'Justice',         plays:138, note:'你给它点过红心。', hue:280 }
+    ]
+  },
+  nature: {
+    name:'山系治愈', artist:'Tycho / ODESZA …', genre:'Chillwave · Folktronica', minutes:11050, mood:'松弛的辽阔',
+    style:'nature', track:'assets/pool4.mp3', tempo:92, scaleType:'major', energy:0.45,
+    center:{ song:'Sunset Lover', artist:'Petit Biscuit', plays:224, note:'黄昏散步的固定配乐。', hue:150 },
+    songs:[
+      { song:'Awake',            artist:'Tycho',            plays:176, note:'写东西时的背景。', hue:170 },
+      { song:'Bloom',            artist:'ODESZA',           plays:159, note:'周末早晨最常出现。', hue:140 },
+      { song:'Saturn',           artist:'Sleeping at Last', plays:141, note:'一个人发呆时放。', hue:190 },
+      { song:'Strawberry Swing', artist:'Coldplay',         plays:120, note:'心情好的那天。', hue:90 }
+    ]
+  },
+  retro: {
+    name:'复古胶片', artist:'EW&F / 山下達郎 …', genre:'Soul · City Pop', minutes:9870, mood:'暖旧的浪漫',
+    style:'retro', track:'assets/pool6.mp3', tempo:104, scaleType:'major', energy:0.6,
+    center:{ song:'September', artist:'Earth, Wind & Fire', plays:199, note:'做饭时一定会放的一首。', hue:35 },
+    songs:[
+      { song:'Ride on Time',          artist:'山下達郎',       plays:165, note:'最近迷上的 city pop。', hue:25 },
+      { song:'Valerie',               artist:'Amy Winehouse', plays:152, note:'雨天午后最常出现。', hue:45 },
+      { song:'Chamber of Reflection', artist:'Mac DeMarco',   plays:138, note:'一个人时单曲循环。', hue:280 },
+      { song:'Movin On',              artist:'Tom Misch',     plays:121, note:'你给它点过红心。', hue:60 }
     ]
   }
 };
