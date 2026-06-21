@@ -35,6 +35,12 @@
   #dataCard .row span:first-child { opacity:.55; } #dataCard .row span:last-child { font-weight:600; color:var(--primary); text-align:right; max-width:140px; }
 
   #personaSwitch { top:22px; right:22px; padding:12px; display:flex; flex-direction:column; gap:8px; width:200px; max-height:calc(100vh - 44px); overflow-y:auto; }
+  #personaSwitch .sw-head { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06); color:#fff; cursor:pointer; font-size:14px; font-weight:700; }
+  #personaSwitch .sw-head .sw-chev { font-size:11px; opacity:.6; font-weight:400; white-space:nowrap; }
+  #personaSwitch .sw-list { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+  #personaSwitch.collapsed .sw-list { display:none; }
+  #personaSwitch.collapsed { max-height:none; overflow:visible; }
   #personaSwitch .lbl { font-size:11px; letter-spacing:.14em; opacity:.5; padding:2px 6px 6px; }
   #personaSwitch button { pointer-events:auto; padding:11px 14px; text-align:left; border-radius:10px; border:1px solid rgba(255,255,255,.12);
     background:rgba(255,255,255,.04); color:#fff; cursor:pointer; font-size:14px; transition:all .2s; }
@@ -120,13 +126,15 @@
     <div class="row"><span>策展基调</span><span id="dc-mood">—</span></div>
   </div>
   <div id="personaSwitch" class="panel">
-    <div class="lbl">换一份歌单 → AI 重新布展</div>
-    <button data-persona="classical" class="active">古典沉思<span class="sub">Neoclassical · Einaudi…</span></button>
-    <button data-persona="neon">霓虹夜行<span class="sub">Synthwave · The Weeknd…</span></button>
-    <button data-persona="folk">晨光民谣<span class="sub">Folk · Bon Iver…</span></button>
-    <button data-persona="cyber">暗潮赛博<span class="sub">Industrial · Billie…</span></button>
-    <button data-persona="nature">山系治愈<span class="sub">Chillwave · Tycho…</span></button>
-    <button data-persona="retro">复古胶片<span class="sub">Soul · EW&amp;F…</span></button>
+    <button class="sw-head" id="switchToggle"><span id="sw-cur">古典沉思</span><span class="sw-chev">换馆 ▾</span></button>
+    <div class="sw-list">
+      <button data-persona="classical" class="active">古典沉思<span class="sub">Neoclassical · Einaudi…</span></button>
+      <button data-persona="neon">霓虹夜行<span class="sub">Synthwave · The Weeknd…</span></button>
+      <button data-persona="folk">晨光民谣<span class="sub">Folk · Bon Iver…</span></button>
+      <button data-persona="cyber">暗潮赛博<span class="sub">Industrial · Billie…</span></button>
+      <button data-persona="nature">山系治愈<span class="sub">Chillwave · Tycho…</span></button>
+      <button data-persona="retro">复古胶片<span class="sub">Soul · EW&amp;F…</span></button>
+    </div>
   </div>
   <div id="nowbar" class="panel">
     <button id="playBtn">❚❚</button>
@@ -522,12 +530,18 @@ function renderRecord(){
 document.getElementById('enterBtn').addEventListener('click',()=>{ intro.classList.add('hidden'); renderRecord(); recordEl.classList.remove('hidden'); });
 document.getElementById('toMuseum').addEventListener('click',()=>{ recordEl.classList.add('hidden'); hud.classList.add('show');
   document.getElementById('reticle').classList.add('show'); document.getElementById('joy').classList.add('show');
+  document.getElementById('sw-cur').textContent=PROFILES[current].name;
   built=buildMuseum(current); initAudio(); startMusic(); flying=true; flyT=0; setTimeout(aiToast,2600); });
 document.getElementById('playBtn').addEventListener('click',toggleMusic);
-document.querySelectorAll('#personaSwitch button').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.persona===current)return; current=b.dataset.persona;
-  document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.toggle('active',x===b));
+document.querySelectorAll('#personaSwitch button[data-persona]').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.persona===current)return; current=b.dataset.persona;
+  document.querySelectorAll('#personaSwitch button[data-persona]').forEach(x=>x.classList.toggle('active',x===b));
+  document.getElementById('sw-cur').textContent=PROFILES[current].name;
+  if(window.matchMedia && matchMedia('(pointer:coarse)').matches) document.getElementById('personaSwitch').classList.add('collapsed');
   const fl=document.getElementById('flash'); fl.style.opacity='0.8';
   setTimeout(()=>{ built=buildMuseum(current); retune(); aiToast(); fl.style.opacity='0'; }, 240); }));
+const switchToggle=document.getElementById('switchToggle');
+switchToggle.addEventListener('click',()=>document.getElementById('personaSwitch').classList.toggle('collapsed'));
+if(window.matchMedia && matchMedia('(pointer:coarse)').matches) document.getElementById('personaSwitch').classList.add('collapsed');
 addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); });
 function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2400); }
 function aiToast(){ const P=PROFILES[current]; toast('🤖 AI 读了你的 '+(P.songs.length+1)+' 首歌 → 主基调：'+STYLES[P.style].label+' · 已为你布展'); }
