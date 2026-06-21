@@ -90,11 +90,15 @@
 <div id="toast"></div>
 
 <script type="importmap">
-{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+} }
 </script>
 
 <script type="module">
 import * as THREE from 'three';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 /* ============ 数据：两座馆（换数据=换一座馆）============ */
 const PERSONAS = {
@@ -132,6 +136,7 @@ const camera=new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 500);
 const renderer=new THREE.WebGLRenderer({ antialias:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.18;
 app.appendChild(renderer.domElement);
 let museum=new THREE.Group(); scene.add(museum);
 let built=null, materialize=0;
@@ -144,13 +149,16 @@ function wrap(g, text, x, y, max, lh){ const ch=[...text]; let line='', yy=y;
 function hsl(h,s,l){ return `hsl(${h},${s}%,${l}%)`; }
 
 function artTex(title, hue){ return tex((g,w,h)=>{
-  const grad=g.createLinearGradient(0,0,w,h); grad.addColorStop(0,hsl(hue,55,16)); grad.addColorStop(1,hsl((hue+40)%360,65,42));
+  let s=Math.floor(hue)*9301+49297; const rnd=()=>{ s=(s*9301+49297)%233280; return s/233280; };
+  const grad=g.createLinearGradient(0,0,w*0.4,h); grad.addColorStop(0,hsl(hue,62,13)); grad.addColorStop(.55,hsl((hue+22)%360,70,32)); grad.addColorStop(1,hsl((hue+48)%360,74,50));
   g.fillStyle=grad; g.fillRect(0,0,w,h);
-  g.globalAlpha=0.5; for(let i=0;i<5;i++){ g.fillStyle=hsl((hue+i*25)%360,70,55); g.beginPath();
-    g.arc(w*(0.2+Math.random()*0.6), h*(0.2+Math.random()*0.5), 40+Math.random()*120, 0, Math.PI*2); g.fill(); }
-  g.globalAlpha=1; g.fillStyle='rgba(0,0,0,.32)'; g.fillRect(0,h-150,w,150);
-  g.fillStyle='#fff'; g.font='bold 56px -apple-system,PingFang SC,Arial'; g.textBaseline='alphabetic';
-  wrap(g,title,40,h-70,w-80,60);
+  for(let i=0;i<4;i++){ g.globalAlpha=0.18+rnd()*0.16; g.fillStyle=hsl((hue+i*28)%360,78,60);
+    g.beginPath(); g.arc(w*(0.15+rnd()*0.7), h*(0.12+rnd()*0.5), 70+rnd()*150, 0, Math.PI*2); g.fill(); }
+  g.globalAlpha=1;
+  const hl=g.createRadialGradient(w*0.32,h*0.2,0,w*0.32,h*0.2,w*0.55); hl.addColorStop(0,'rgba(255,255,255,.16)'); hl.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=hl; g.fillRect(0,0,w,h);
+  const sh=g.createLinearGradient(0,h-230,0,h); sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,.62)'); g.fillStyle=sh; g.fillRect(0,h-230,w,230);
+  g.fillStyle='#fff'; g.font='bold 58px -apple-system,PingFang SC,Arial'; g.textBaseline='alphabetic'; wrap(g,title,44,h-62,w-88,64);
 }, 512, 640); }
 
 function placardTex(song, artist, plays, note, pal){ return tex((g,w,h)=>{
@@ -198,7 +206,10 @@ function buildMuseum(key){
   heroSpot.position.set(0,7.5,0); heroSpot.target.position.set(0,1,0); museum.add(heroSpot); museum.add(heroSpot.target);
 
   // 地板 / 天花 / 墙
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w,ROOM.l), matFloor); floor.rotation.x=-Math.PI/2; museum.add(floor);
+  const floor=new Reflector(new THREE.PlaneGeometry(ROOM.w,ROOM.l), { color:0x3a4150, textureWidth:innerWidth, textureHeight:innerHeight, clipBias:0.003 });
+  floor.rotation.x=-Math.PI/2; floor.position.y=0.002; museum.add(floor);
+  const floorTint=new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w,ROOM.l), new THREE.MeshBasicMaterial({ color:pal.floor, transparent:true, opacity:0.55 }));
+  floorTint.rotation.x=-Math.PI/2; floorTint.position.y=0.004; museum.add(floorTint);
   const ceil=new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w,ROOM.l), matWall); ceil.rotation.x=Math.PI/2; ceil.position.y=ROOM.h; museum.add(ceil);
   const back=new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w,ROOM.h), matWall); back.position.set(0,ROOM.h/2,-ROOM.l/2); museum.add(back);
   const front=new THREE.Mesh(new THREE.PlaneGeometry(ROOM.w,ROOM.h), matWall); front.position.set(0,ROOM.h/2,ROOM.l/2); front.rotation.y=Math.PI; museum.add(front);
@@ -239,11 +250,19 @@ function buildMuseum(key){
     reactive.push({type:'art', mesh:art, sp});
   });
 
+  // 光束里的尘埃
+  const mn=150, mpos=new Float32Array(mn*3);
+  for(let i=0;i<mn;i++){ mpos[i*3]=(Math.random()-0.5)*ROOM.w; mpos[i*3+1]=Math.random()*ROOM.h; mpos[i*3+2]=(Math.random()-0.5)*ROOM.l; }
+  const mgeo=new THREE.BufferGeometry(); mgeo.setAttribute('position',new THREE.BufferAttribute(mpos,3));
+  const motes=new THREE.Points(mgeo, new THREE.PointsMaterial({ color:pal.light, size:0.05, transparent:true, opacity:0.45, depthWrite:false }));
+  museum.add(motes);
+
   materialize=0; updateCard(P);
   window.__PICK__=pickable;
   return { reactive, update(b,t){
-    for(const r of reactive){ if(r.type==='hero'){ r.vinyl.rotation.y+=0.02+b.mid*0.06; r.vlabel.rotation.y=r.vinyl.rotation.y;
-        r.spot.intensity=45+b.bass*60; } else { r.mesh.material.emissiveIntensity=0.8+b.mid*0.5; r.sp.intensity=12+b.mid*10; } }
+    motes.rotation.y+=0.0004; motes.material.opacity=0.45*materialize;
+    for(const r of reactive){ if(r.type==='hero'){ r.vinyl.rotation.y+=0.02+b.mid*0.08; r.vlabel.rotation.y=r.vinyl.rotation.y;
+        r.spot.intensity=45+b.bass*70; } else { r.mesh.material.emissiveIntensity=0.8+b.mid*0.6; r.sp.intensity=12+b.mid*12; } }
   }};
 }
 function updateCard(P){ set('dc-name',P.name); set('dc-artist',P.artist); set('dc-genre',P.genre);
@@ -262,25 +281,20 @@ const ray=new THREE.Raycaster(), nd=new THREE.Vector2();
 function pick(e){ if(flying||!hud.classList.contains('show'))return; nd.x=e.clientX/innerWidth*2-1; nd.y=-(e.clientY/innerHeight*2-1);
   ray.setFromCamera(nd,camera); const hit=ray.intersectObjects(window.__PICK__||[],false)[0]; if(hit&&hit.object.userData.song) toast('🎵 '+hit.object.userData.song); }
 
-/* ============ 音频（程序化展厅环境音）============ */
-let ac,master,analyser,freq,musicOn=false,timer=null,next16=0,step16=0,tempo=120,scaleType='minor',chordIdx=0;
-const SCALES={minor:[0,3,5,7,10],major:[0,2,4,7,9]}, PROG=[0,-2,3,-4], mtf=m=>440*Math.pow(2,(m-69)/12);
-function initAudio(){ if(ac)return; ac=new (window.AudioContext||window.webkitAudioContext)(); master=ac.createGain(); master.gain.value=0;
-  analyser=ac.createAnalyser(); analyser.fftSize=1024; freq=new Uint8Array(analyser.frequencyBinCount); master.connect(analyser); analyser.connect(ac.destination); }
-function v(type,f,t,d,p){ const o=ac.createOscillator(),g=ac.createGain(); o.type=type; o.frequency.value=f; g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(p,t+0.01); g.gain.exponentialRampToValueAtTime(0.0008,t+d); o.connect(g); g.connect(master); o.start(t); o.stop(t+d+0.05); }
-function kick(t){ const o=ac.createOscillator(),g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(130,t); o.frequency.exponentialRampToValueAtTime(44,t+0.14);
-  g.gain.setValueAtTime(0.8,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.24); }
-function stepFn(s,t){ const P=PERSONAS[current], sc=SCALES[scaleType], root=(scaleType==='minor'?45:48)+PROG[chordIdx];
-  if(s===0){ [0,7,12].forEach(o=>v('sawtooth',mtf(root+o),t,2.1,0.045)); v('triangle',mtf(root-12),t,2.1,0.055); }
-  if(P.energy>0.6? s%4===0 : s%8===0) kick(t);
-  if(s%2===0){ const deg=sc[(s/2)%sc.length], oct=12*(1+((s/2)%2)); v('square',mtf(root+deg+oct),t,0.3,0.04+P.energy*0.04); } }
-function sched(){ const s16=(60/tempo)/4; while(next16<ac.currentTime+0.12){ stepFn(step16,next16); next16+=s16; step16=(step16+1)%16; if(step16===0)chordIdx=(chordIdx+1)%PROG.length; } }
-function startMusic(){ const P=PERSONAS[current]; tempo=P.tempo; scaleType=P.scaleType; if(ac.state==='suspended')ac.resume();
-  master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(master.gain.value,ac.currentTime); master.gain.linearRampToValueAtTime(0.42,ac.currentTime+3);
-  next16=ac.currentTime+0.1; step16=0; chordIdx=0; if(timer)clearInterval(timer); timer=setInterval(sched,25); musicOn=true; document.getElementById('playBtn').textContent='❚❚'; }
-function toggleMusic(){ if(!ac)return; if(musicOn){ clearInterval(timer); timer=null; master.gain.linearRampToValueAtTime(0.0001,ac.currentTime+0.4); musicOn=false; document.getElementById('playBtn').textContent='▶'; } else startMusic(); }
-function retune(){ const P=PERSONAS[current]; tempo=P.tempo; scaleType=P.scaleType; }
+/* ============ 音频（真实曲目，同源加载 → 频谱驱动反应）============ */
+let ac,analyser,freq,audioEl,srcNode,musicOn=false;
+const TRACKS={ night:'assets/night.mp3', dawn:'assets/dawn.mp3' };
+function fadeTo(target){ clearInterval(window.__fade); window.__fade=setInterval(()=>{ if(!audioEl)return;
+  const d=target-audioEl.volume; audioEl.volume=Math.abs(d)<0.04? target : audioEl.volume+Math.sign(d)*0.04; if(audioEl.volume===target)clearInterval(window.__fade); },70); }
+function initAudio(){ if(ac)return; ac=new (window.AudioContext||window.webkitAudioContext)();
+  audioEl=new Audio(); audioEl.loop=true; audioEl.preload='auto'; audioEl.volume=0;
+  srcNode=ac.createMediaElementSource(audioEl); analyser=ac.createAnalyser(); analyser.fftSize=1024;
+  freq=new Uint8Array(analyser.frequencyBinCount); srcNode.connect(analyser); analyser.connect(ac.destination); }
+function loadAndPlay(){ if(!audioEl)return; const want=TRACKS[current];
+  if(!audioEl.src.endsWith(want)){ audioEl.src=want; } audioEl.volume=0; audioEl.play().catch(()=>{}); fadeTo(0.75); }
+function startMusic(){ if(!ac)initAudio(); if(ac.state==='suspended')ac.resume(); loadAndPlay(); musicOn=true; document.getElementById('playBtn').textContent='❚❚'; }
+function toggleMusic(){ if(!audioEl)return; if(musicOn){ fadeTo(0); setTimeout(()=>{if(!musicOn)audioEl.pause();},700); musicOn=false; document.getElementById('playBtn').textContent='▶'; } else { if(ac&&ac.state==='suspended')ac.resume(); audioEl.play().catch(()=>{}); fadeTo(0.75); musicOn=true; document.getElementById('playBtn').textContent='❚❚'; } }
+function retune(){ if(musicOn) loadAndPlay(); }
 
 /* ============ 入场 / UI ============ */
 let flying=false, flyT=0; const clock=new THREE.Clock();
@@ -304,9 +318,11 @@ function animate(){ requestAnimationFrame(animate);
     yaw=0; pitch=0; if(flyT>=1) flying=false; }
   else { camera.rotation.y=yaw; camera.rotation.x=pitch;
     let mx=0,mz=0; if(keys['w'])mz+=1; if(keys['s'])mz-=1; if(keys['a'])mx-=1; if(keys['d'])mx+=1;
-    if(mx||mz){ const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+    const moving=!!(mx||mz);
+    if(moving){ const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
       const mv=new THREE.Vector3().addScaledVector(f,mz).addScaledVector(r,mx).normalize().multiplyScalar(MOVE*dt);
-      camera.position.add(mv); camera.position.x=THREE.MathUtils.clamp(camera.position.x,-BX,BX); camera.position.z=THREE.MathUtils.clamp(camera.position.z,-BZ,BZ); camera.position.y=EYE; } }
+      camera.position.add(mv); camera.position.x=THREE.MathUtils.clamp(camera.position.x,-BX,BX); camera.position.z=THREE.MathUtils.clamp(camera.position.z,-BZ,BZ); }
+    camera.position.y=EYE+(moving?Math.sin(t*9)*0.06:0); }
   let b={bass:0,mid:0,treble:0};
   if(analyser&&musicOn){ analyser.getByteFrequencyData(freq); const a=(x,y)=>{let s=0;for(let i=x;i<y;i++)s+=freq[i];return s/((y-x)*255);};
     b={bass:a(2,10),mid:a(16,48),treble:a(64,120)}; }
