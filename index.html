@@ -54,6 +54,27 @@
   #loading { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; background:#0b0d14; font-size:13px; letter-spacing:.2em; opacity:.7; }
   #flash { position:fixed; inset:0; z-index:28; background:#0b0d14; opacity:0; pointer-events:none; transition:opacity .35s; }
   #vig { position:fixed; inset:0; z-index:12; pointer-events:none; box-shadow: inset 0 0 240px 50px rgba(0,0,0,.55); }
+  #record { position:fixed; inset:0; z-index:31; overflow-y:auto; background:linear-gradient(160deg,#0c1020,#0a0a12 60%); transition:opacity .5s; }
+  #record.hidden { opacity:0; pointer-events:none; }
+  .rec-inner { max-width:680px; margin:0 auto; padding:44px 22px 60px; }
+  .rec-h { font-size:12px; letter-spacing:.3em; opacity:.5; text-align:center; }
+  .rec-title { font-size:clamp(26px,5vw,42px); font-weight:800; text-align:center; margin:8px 0 22px; background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .rec-pick { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:22px; }
+  .rec-pick button { padding:7px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:#fff; font-size:13px; cursor:pointer; }
+  .rec-pick button.active { background:linear-gradient(90deg,rgba(159,200,255,.25),rgba(177,77,255,.25)); border-color:rgba(177,77,255,.6); }
+  .rec-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:24px; }
+  .rec-stats .st { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:15px 18px; }
+  .rec-stats .st b { display:block; font-size:24px; font-weight:800; }
+  .rec-stats .st span { font-size:12px; opacity:.55; }
+  .rec-stats .st.accent b { color:var(--accent); }
+  .rec-list { display:flex; flex-direction:column; gap:3px; }
+  .rec-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:10px; background:rgba(255,255,255,.03); }
+  .rec-row .rk { width:24px; text-align:center; opacity:.5; font-weight:700; }
+  .rec-row .ti { flex:1; min-width:0; } .rec-row .ti .s { font-weight:600; } .rec-row .ti .a { font-size:12px; opacity:.55; }
+  .rec-row .pl { font-size:12px; opacity:.7; white-space:nowrap; }
+  .rec-row.top { background:linear-gradient(90deg,rgba(159,200,255,.16),rgba(177,77,255,.10)); border:1px solid rgba(177,77,255,.4); }
+  .rec-row .badge { font-size:11px; color:var(--accent); font-weight:600; }
+  #toMuseum { display:block; width:100%; margin-top:26px; padding:16px; font-size:16px; font-weight:700; color:#06121f; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(90deg,var(--primary),var(--accent)); box-shadow:0 10px 40px rgba(159,200,255,.3); }
   #joy { display:none; position:fixed; left:26px; bottom:84px; width:120px; height:120px; border-radius:50%;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18); z-index:22; touch-action:none;
     align-items:center; justify-content:center; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
@@ -69,7 +90,23 @@
   <div class="kicker">MUSEUM OF YOU</div>
   <h1>你的音乐博物馆</h1>
   <p>AI 读你的听歌记录，把你这一年的歌当成艺术品策展。<br/>推门进去，逛一座按你口味自动布展的馆——<br/>每件展品，都是一段你忘了的循环。</p>
-  <button id="enterBtn">推门进馆 <small>戴上耳机更好 · 拖动 = 转头 · WASD = 走</small></button>
+  <button id="enterBtn">查看我的听歌记录 <small>先看数据，再决定进不进馆</small></button>
+</div>
+
+<div id="record" class="hidden">
+  <div class="rec-inner">
+    <div class="rec-h">YOUR LISTENING RECORD · 2026 上半年</div>
+    <div class="rec-title">你的听歌记录</div>
+    <div class="rec-pick" id="rec-pick"></div>
+    <div class="rec-stats">
+      <div class="st"><b id="r-count">—</b><span>最常听(首)</span></div>
+      <div class="st"><b id="r-min">—</b><span>到馆时长(分钟)</span></div>
+      <div class="st"><b id="r-artist">—</b><span>常驻艺术家</span></div>
+      <div class="st accent"><b id="r-style">—</b><span>AI 判定主基调</span></div>
+    </div>
+    <div class="rec-list" id="rec-list"></div>
+    <button id="toMuseum">🎫 进入你的音乐博物馆 →</button>
+  </div>
 </div>
 
 <div id="hud">
@@ -139,7 +176,10 @@ const PROFILES = {
       { song:'Strobe',        artist:'deadmau5',  plays:233, note:'只在凌晨出现的一首。', hue:250 },
       { song:'Midnight City', artist:'M83',       plays:198, note:'通勤路上最常按下重播。', hue:270 },
       { song:'Resonance',     artist:'Home',      plays:176, note:'你给它点过最多次红心。', hue:195 },
-      { song:'Nightcall',     artist:'Kavinsky',  plays:154, note:'雨夜的播放量翻三倍。', hue:230 }
+      { song:'Nightcall',       artist:'Kavinsky',  plays:154, note:'雨夜的播放量翻三倍。', hue:230 },
+      { song:'Sunset',          artist:'The Midnight', plays:142, note:'开车回家固定循环。', hue:260 },
+      { song:'A Real Hero',     artist:'College & Electric Youth', plays:131, note:'需要打气时放。', hue:210 },
+      { song:'Days of Thunder', artist:'The Midnight', plays:119, note:'深夜赶 due 背景音。', hue:240 }
     ]
   },
   folk: {
@@ -150,7 +190,10 @@ const PROFILES = {
       { song:'七里香',           artist:'周杰伦',      plays:121, note:'夏末黄昏的高频曲。', hue:40 },
       { song:"Don't Know Why",  artist:'Norah Jones', plays:104, note:'周末早晨最常出现。', hue:35 },
       { song:'旅行的意义',        artist:'陈绮贞',      plays:97,  note:'和 Holocene 最常进同一个歌单。', hue:160 },
-      { song:'The Night We Met', artist:'Lord Huron', plays:88,  note:'听完平均多坐 12 分钟。', hue:90 }
+      { song:'The Night We Met', artist:'Lord Huron', plays:88,  note:'听完平均多坐 12 分钟。', hue:90 },
+      { song:'理想三旬',          artist:'陈鸿宇',      plays:132, note:'一个人走路时放。', hue:55 },
+      { song:'Banana Pancakes',  artist:'Jack Johnson', plays:118, note:'懒洋洋的周末。', hue:65 },
+      { song:'Vincent',          artist:'Don McLean',  plays:101, note:'夜里安静下来时。', hue:200 }
     ]
   },
   classical: {
@@ -161,7 +204,10 @@ const PROFILES = {
       { song:'Time',                    artist:'Hans Zimmer',  plays:174, note:'它一响你就会停下手里的事。', hue:220 },
       { song:'Summer',                  artist:'久石让',        plays:151, note:'想念的时候放。', hue:45 },
       { song:"Comptine d'un autre été", artist:'Yann Tiersen', plays:133, note:'雨天清晨的第一首。', hue:160 },
-      { song:'River Flows in You',      artist:'Yiruma',       plays:120, note:'点红心最多的一首。', hue:200 }
+      { song:'River Flows in You',      artist:'Yiruma',       plays:120, note:'点红心最多的一首。', hue:200 },
+      { song:'Experience',              artist:'Ludovico Einaudi', plays:148, note:'通勤地铁里循环。', hue:210 },
+      { song:'Merry Christmas Mr. Lawrence', artist:'坂本龙一', plays:129, note:'下雨天的第一首。', hue:205 },
+      { song:'Gymnopédie No.1',         artist:'Erik Satie',   plays:112, note:'发呆时的背景。', hue:190 }
     ]
   },
   cyber: {
@@ -172,7 +218,10 @@ const PROFILES = {
       { song:'Pursuit',     artist:'Gesaffelstein',  plays:188, note:'健身时单曲循环。', hue:330 },
       { song:'Not in Love', artist:'Crystal Castles', plays:162, note:'情绪最差那几天的出口。', hue:300 },
       { song:'Sail',        artist:'AWOLNATION',      plays:150, note:'开车音量最大的一首。', hue:350 },
-      { song:'Genesis',     artist:'Justice',         plays:138, note:'你给它点过红心。', hue:280 }
+      { song:'Genesis',        artist:'Justice',         plays:138, note:'你给它点过红心。', hue:280 },
+      { song:'Spitfire',       artist:'The Prodigy',     plays:144, note:'通勤戴耳机冲一下。', hue:340 },
+      { song:'Black Skinhead', artist:'Kanye West',      plays:128, note:'最差心情的出口。', hue:350 },
+      { song:'Kerosene',       artist:'Crystal Castles', plays:116, note:'凌晨循环。', hue:310 }
     ]
   },
   nature: {
@@ -183,7 +232,10 @@ const PROFILES = {
       { song:'Awake',            artist:'Tycho',            plays:176, note:'写东西时的背景。', hue:170 },
       { song:'Bloom',            artist:'ODESZA',           plays:159, note:'周末早晨最常出现。', hue:140 },
       { song:'Saturn',           artist:'Sleeping at Last', plays:141, note:'一个人发呆时放。', hue:190 },
-      { song:'Strawberry Swing', artist:'Coldplay',         plays:120, note:'心情好的那天。', hue:90 }
+      { song:'Strawberry Swing',   artist:'Coldplay',     plays:120, note:'心情好的那天。', hue:90 },
+      { song:'Intro',              artist:'The xx',       plays:158, note:'写东西时铺底。', hue:180 },
+      { song:'Open Eye Signal',    artist:'Jon Hopkins',  plays:132, note:'专注时的长循环。', hue:160 },
+      { song:'An Ending (Ascent)', artist:'Brian Eno',    plays:119, note:'睡前最后一首。', hue:200 }
     ]
   },
   retro: {
@@ -194,7 +246,10 @@ const PROFILES = {
       { song:'Ride on Time',          artist:'山下達郎',       plays:165, note:'最近迷上的 city pop。', hue:25 },
       { song:'Valerie',               artist:'Amy Winehouse', plays:152, note:'雨天午后最常出现。', hue:45 },
       { song:'Chamber of Reflection', artist:'Mac DeMarco',   plays:138, note:'一个人时单曲循环。', hue:280 },
-      { song:'Movin On',              artist:'Tom Misch',     plays:121, note:'你给它点过红心。', hue:60 }
+      { song:'Movin On',     artist:'Tom Misch',     plays:121, note:'你给它点过红心。', hue:60 },
+      { song:'Plastic Love', artist:'竹内まりや',     plays:171, note:'最近的 city pop 循环。', hue:30 },
+      { song:'Lovely Day',   artist:'Bill Withers',  plays:150, note:'阳光好的早晨。', hue:40 },
+      { song:'Get Lucky',    artist:'Daft Punk',     plays:138, note:'做家务必放。', hue:50 }
     ]
   }
 };
@@ -331,7 +386,7 @@ function buildMuseum(key){
   const pickable=[];
   const slots=[ {x:-ROOM.w/2+0.2, z:-7, ry:Math.PI/2}, {x:-ROOM.w/2+0.2, z:7, ry:Math.PI/2},
                 {x:ROOM.w/2-0.2, z:-7, ry:-Math.PI/2}, {x:ROOM.w/2-0.2, z:7, ry:-Math.PI/2} ];
-  P.songs.forEach((s,i)=>{ const sl=slots[i];
+  P.songs.forEach((s,i)=>{ const sl=slots[i]; if(!sl)return;
     const frame=new THREE.Mesh(new THREE.BoxGeometry(0.2,4.4,3.6), matFrame); frame.position.set(sl.x + (sl.x<0?0.0:0.0), 4.4, sl.z); museum.add(frame);
     const art=panel(artTex(s.song,s.hue), 3.2, 4, st.dark?0.9:0.42); art.position.set(sl.x + (sl.x<0?0.12:-0.12), 4.4, sl.z); art.rotation.y=sl.ry;
     art.userData={song:s.song, artist:s.artist||P.artist, track:POOL[i%POOL.length]}; museum.add(art); pickable.push(art);
@@ -405,8 +460,24 @@ let flying=false, flyT=0; const clock=new THREE.Clock();
 const intro=document.getElementById('intro'), hud=document.getElementById('hud');
 const CAM_START=new THREE.Vector3(0,EYE,ROOM.l/2-2), CAM_HOME=new THREE.Vector3(0,EYE,9);
 camera.position.copy(CAM_START); camera.rotation.order='YXZ';
-document.getElementById('enterBtn').addEventListener('click',()=>{ intro.classList.add('hidden'); hud.classList.add('show');
-  document.getElementById('reticle').classList.add('show'); document.getElementById('joy').classList.add('show'); initAudio(); startMusic(); flying=true; flyT=0; setTimeout(aiToast,2600); });
+const recordEl=document.getElementById('record');
+function renderRecord(){
+  const P=PROFILES[current], pal=STYLES[P.style].pal;
+  document.documentElement.style.setProperty('--primary','#'+pal.light.toString(16).padStart(6,'0'));
+  document.documentElement.style.setProperty('--accent','#'+pal.accent.toString(16).padStart(6,'0'));
+  const pk=document.getElementById('rec-pick');
+  if(!pk.childElementCount){ Object.keys(PROFILES).forEach(k=>{ const b=document.createElement('button'); b.textContent=PROFILES[k].name; b.dataset.k=k; b.onclick=()=>{ current=k; renderRecord(); }; pk.appendChild(b); }); }
+  [...pk.children].forEach(b=>b.classList.toggle('active', b.dataset.k===current));
+  set('r-count', P.songs.length+1); set('r-min', P.minutes.toLocaleString()); set('r-artist', P.artist); set('r-style', STYLES[P.style].label);
+  const all=[P.center, ...P.songs], list=document.getElementById('rec-list'); list.innerHTML='';
+  all.forEach((s,i)=>{ const row=document.createElement('div'); row.className='rec-row'+(i===0?' top':'');
+    row.innerHTML='<div class="rk">'+(i===0?'★':(i+1))+'</div><div class="ti"><div class="s">'+s.song+(i===0?' <span class="badge">· 镇馆之宝</span>':'')+'</div><div class="a">'+(s.artist||P.artist)+'</div></div><div class="pl">'+s.plays+' 次</div>';
+    list.appendChild(row); });
+}
+document.getElementById('enterBtn').addEventListener('click',()=>{ intro.classList.add('hidden'); renderRecord(); recordEl.classList.remove('hidden'); });
+document.getElementById('toMuseum').addEventListener('click',()=>{ recordEl.classList.add('hidden'); hud.classList.add('show');
+  document.getElementById('reticle').classList.add('show'); document.getElementById('joy').classList.add('show');
+  built=buildMuseum(current); initAudio(); startMusic(); flying=true; flyT=0; setTimeout(aiToast,2600); });
 document.getElementById('playBtn').addEventListener('click',toggleMusic);
 document.querySelectorAll('#personaSwitch button').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.persona===current)return; current=b.dataset.persona;
   document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.toggle('active',x===b));
