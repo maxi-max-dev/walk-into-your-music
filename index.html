@@ -81,6 +81,10 @@
   .rec-row.top { background:linear-gradient(90deg,rgba(159,200,255,.16),rgba(177,77,255,.10)); border:1px solid rgba(177,77,255,.4); }
   .rec-row .badge { font-size:11px; color:var(--accent); font-weight:600; }
   #toMuseum { display:block; width:100%; margin-top:26px; padding:16px; font-size:16px; font-weight:700; color:#06121f; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(90deg,var(--primary),var(--accent)); box-shadow:0 10px 40px rgba(159,200,255,.3); }
+  .rec-upload { text-align:center; margin:-4px 0 22px; }
+  #uploadBtn { padding:10px 18px; border-radius:999px; border:1px dashed rgba(255,255,255,.4); background:rgba(255,255,255,.04); color:#fff; font-size:13px; cursor:pointer; }
+  #uploadBtn:hover { background:rgba(255,255,255,.09); }
+  .rec-up-hint { font-size:11px; opacity:.5; margin-top:8px; } .rec-up-hint a { color:var(--primary); cursor:pointer; text-decoration:underline; }
   #joy { display:none; position:fixed; left:26px; bottom:84px; width:120px; height:120px; border-radius:50%;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.18); z-index:22; touch-action:none;
     align-items:center; justify-content:center; backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
@@ -104,6 +108,11 @@
     <div class="rec-h">YOUR LISTENING RECORD · 2026 上半年</div>
     <div class="rec-title">你的听歌记录</div>
     <div class="rec-pick" id="rec-pick"></div>
+    <div class="rec-upload">
+      <button id="uploadBtn">⬆️ 上传我的真实听歌数据 → 生成专属馆</button>
+      <input type="file" id="uploadFile" accept=".json,.csv,application/json,text/csv" hidden>
+      <div class="rec-up-hint">支持 JSON / CSV（列：歌名、艺术家、播放次数；可选 流派）· <a id="sampleLink">下载示例文件</a></div>
+    </div>
     <div class="rec-stats">
       <div class="st"><b id="r-count">—</b><span>最常听(首)</span></div>
       <div class="st"><b id="r-min">—</b><span>到馆时长(分钟)</span></div>
@@ -532,6 +541,48 @@ document.getElementById('toMuseum').addEventListener('click',()=>{ recordEl.clas
   document.getElementById('reticle').classList.add('show'); document.getElementById('joy').classList.add('show');
   document.getElementById('sw-cur').textContent=PROFILES[current].name;
   built=buildMuseum(current); initAudio(); startMusic(); flying=true; flyT=0; setTimeout(aiToast,2600); });
+
+/* ====== 上传真实听歌数据 → 生成专属馆 ====== */
+function guessStyle(rows){ const txt=rows.map(r=>((r.genre||'')+' '+(r.artist||'')+' '+(r.song||''))).join(' ').toLowerCase();
+  const has=(...k)=>k.some(w=>txt.includes(w));
+  if(has('classical','neoclass','piano','古典','einaudi','chopin','钢琴','zimmer','久石','yiruma','satie')) return 'classical';
+  if(has('synth','electro','edm','house','techno','电子','daft','deadmau5','kavinsky','m83')) return 'neon';
+  if(has('folk','民谣','acoustic','indie','bon iver','乡村','jack johnson')) return 'folk';
+  if(has('rock','metal','punk','industrial','phonk','摇滚','prodigy','gesaffelstein')) return 'cyber';
+  if(has('jazz','soul','funk','disco','city pop','复古','blues','r&b','rnb','motown','bee gees')) return 'retro';
+  if(has('ambient','chill','lo-fi','lofi','chillwave','氛围','bonobo','tycho','odesza')) return 'nature';
+  return 'classical'; }
+function gv(o,keys,d){ for(const k of keys){ for(const kk in o){ if(kk.toLowerCase()===k && o[kk]!=null && o[kk]!=='') return o[kk]; } } return d; }
+function parseData(text){ text=text.trim(); let rows=[];
+  if(text[0]==='['||text[0]==='{'){ const j=JSON.parse(text); const arr=Array.isArray(j)?j:(j.items||j.tracks||j.songs||[]);
+    rows=arr.map(o=>({ song:gv(o,['song','title','name','track','trackname','歌名','歌曲'],''), artist:gv(o,['artist','artistname','singer','艺术家','歌手'],'未知艺术家'), plays:+gv(o,['plays','count','playcount','播放次数','次数'],0)||0, genre:gv(o,['genre','流派','类型'],'') })); }
+  else { const lines=text.split(/\r?\n/).filter(l=>l.trim()); const head=lines[0].split(',').map(s=>s.trim().toLowerCase());
+    const ix=(ns)=>head.findIndex(h=>ns.some(n=>h.includes(n)));
+    const si=ix(['song','title','歌','name','track']), ai=ix(['artist','歌手','艺术']), pi=ix(['play','count','次']), gi=ix(['genre','流派','类型']);
+    rows=lines.slice(1).map(l=>{ const c=l.split(','); return { song:(c[si]||'').trim(), artist:(c[ai]||'未知艺术家').trim(), plays:+((c[pi]||'0').trim())||0, genre:(c[gi]||'').trim() }; }); }
+  return rows.filter(r=>r.song); }
+function buildCustom(rows){ rows.sort((a,b)=>b.plays-a.plays);
+  rows.forEach((r,i)=>{ r.hue=(i*53+20)%360; });
+  const cnt={}; rows.forEach(r=>cnt[r.artist]=(cnt[r.artist]||0)+1); const top=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])[0]||'你';
+  const mins=rows.reduce((s,r)=>s+(r.plays||1),0)*3 || rows.length*60; const c=rows[0];
+  PROFILES.custom={ name:'我的真实歌单', artist:top, genre:'你的真实听歌数据', minutes:mins, mood:'真实的你',
+    style:guessStyle(rows), track:'assets/classical.mp3', tempo:96, scaleType:'major', energy:0.5,
+    center:{ song:c.song, artist:c.artist, plays:c.plays||1, note:'你听得最多的一首'+(c.plays?('——'+c.plays+' 次'):'')+'。', hue:c.hue },
+    songs:rows.slice(1).map(r=>({song:r.song,artist:r.artist,plays:r.plays||1,note:(r.plays?('今年播放 '+r.plays+' 次'):'你的收藏之一')+'。',hue:r.hue})) };
+  current='custom';
+  const pk=document.getElementById('rec-pick'); let mb=pk.querySelector('[data-k="custom"]');
+  if(!mb){ mb=document.createElement('button'); mb.dataset.k='custom'; mb.onclick=()=>{ current='custom'; renderRecord(); }; pk.prepend(mb); }
+  mb.textContent='★ 我的真实歌单';
+  renderRecord();
+  document.getElementById('uploadBtn').textContent='✅ 已生成你的专属馆（'+rows.length+' 首）· 下方进入';
+}
+document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('uploadFile').click());
+document.getElementById('uploadFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+  rd.onload=()=>{ try{ const rows=parseData(String(rd.result)); if(!rows.length){ alert('没解析到歌曲，请检查文件格式（需要 歌名 列）'); return; } buildCustom(rows); }catch(err){ alert('解析失败：'+err.message); } };
+  rd.readAsText(f); });
+document.getElementById('sampleLink').addEventListener('click',ev=>{ ev.preventDefault();
+  const s=JSON.stringify([{song:'Nuvole Bianche',artist:'Ludovico Einaudi',plays:256,genre:'neoclassical'},{song:'Blinding Lights',artist:'The Weeknd',plays:180,genre:'synthwave'},{song:'七里香',artist:'周杰伦',plays:120,genre:'mandopop'},{song:'Holocene',artist:'Bon Iver',plays:96,genre:'folk'}],null,2);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([s],{type:'application/json'})); a.download='我的听歌数据_示例.json'; a.click(); });
 document.getElementById('playBtn').addEventListener('click',toggleMusic);
 document.querySelectorAll('#personaSwitch button[data-persona]').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.persona===current)return; current=b.dataset.persona;
   document.querySelectorAll('#personaSwitch button[data-persona]').forEach(x=>x.classList.toggle('active',x===b));
