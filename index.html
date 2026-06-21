@@ -179,7 +179,9 @@ const PROFILES = {
       { song:'Nightcall',       artist:'Kavinsky',  plays:154, note:'雨夜的播放量翻三倍。', hue:230 },
       { song:'Sunset',          artist:'The Midnight', plays:142, note:'开车回家固定循环。', hue:260 },
       { song:'A Real Hero',     artist:'College & Electric Youth', plays:131, note:'需要打气时放。', hue:210 },
-      { song:'Days of Thunder', artist:'The Midnight', plays:119, note:'深夜赶 due 背景音。', hue:240 }
+      { song:'Days of Thunder', artist:'The Midnight', plays:119, note:'深夜赶 due 背景音。', hue:240 },
+      { song:'Turbo Killer',    artist:'Carpenter Brut', plays:112, note:'冲刺时刻的开关。', hue:330 },
+      { song:"Crockett's Theme", artist:'Jan Hammer',   plays:104, note:'夜路上的孤独感。', hue:215 }
     ]
   },
   folk: {
@@ -193,7 +195,9 @@ const PROFILES = {
       { song:'The Night We Met', artist:'Lord Huron', plays:88,  note:'听完平均多坐 12 分钟。', hue:90 },
       { song:'理想三旬',          artist:'陈鸿宇',      plays:132, note:'一个人走路时放。', hue:55 },
       { song:'Banana Pancakes',  artist:'Jack Johnson', plays:118, note:'懒洋洋的周末。', hue:65 },
-      { song:'Vincent',          artist:'Don McLean',  plays:101, note:'夜里安静下来时。', hue:200 }
+      { song:'Vincent',          artist:'Don McLean',  plays:101, note:'夜里安静下来时。', hue:200 },
+      { song:'Skinny Love',      artist:'Birdy',       plays:110, note:'阴天的循环。', hue:160 },
+      { song:'南山南',            artist:'马頔',        plays:98,  note:'想家的时候。', hue:50 }
     ]
   },
   classical: {
@@ -207,7 +211,9 @@ const PROFILES = {
       { song:'River Flows in You',      artist:'Yiruma',       plays:120, note:'点红心最多的一首。', hue:200 },
       { song:'Experience',              artist:'Ludovico Einaudi', plays:148, note:'通勤地铁里循环。', hue:210 },
       { song:'Merry Christmas Mr. Lawrence', artist:'坂本龙一', plays:129, note:'下雨天的第一首。', hue:205 },
-      { song:'Gymnopédie No.1',         artist:'Erik Satie',   plays:112, note:'发呆时的背景。', hue:190 }
+      { song:'Gymnopédie No.1',         artist:'Erik Satie',   plays:112, note:'发呆时的背景。', hue:190 },
+      { song:'Una Mattina',             artist:'Ludovico Einaudi', plays:118, note:'清晨第一杯咖啡。', hue:210 },
+      { song:'Kiss the Rain',           artist:'Yiruma',       plays:105, note:'雨声里的循环。', hue:200 }
     ]
   },
   cyber: {
@@ -221,7 +227,9 @@ const PROFILES = {
       { song:'Genesis',        artist:'Justice',         plays:138, note:'你给它点过红心。', hue:280 },
       { song:'Spitfire',       artist:'The Prodigy',     plays:144, note:'通勤戴耳机冲一下。', hue:340 },
       { song:'Black Skinhead', artist:'Kanye West',      plays:128, note:'最差心情的出口。', hue:350 },
-      { song:'Kerosene',       artist:'Crystal Castles', plays:116, note:'凌晨循环。', hue:310 }
+      { song:'Kerosene',       artist:'Crystal Castles', plays:116, note:'凌晨循环。', hue:310 },
+      { song:'Tarantula',      artist:'Pendulum',        plays:110, note:'肾上腺素拉满。', hue:340 },
+      { song:'Voodoo People',  artist:'The Prodigy',     plays:100, note:'冲劲不够时来一针。', hue:350 }
     ]
   },
   nature: {
@@ -235,7 +243,9 @@ const PROFILES = {
       { song:'Strawberry Swing',   artist:'Coldplay',     plays:120, note:'心情好的那天。', hue:90 },
       { song:'Intro',              artist:'The xx',       plays:158, note:'写东西时铺底。', hue:180 },
       { song:'Open Eye Signal',    artist:'Jon Hopkins',  plays:132, note:'专注时的长循环。', hue:160 },
-      { song:'An Ending (Ascent)', artist:'Brian Eno',    plays:119, note:'睡前最后一首。', hue:200 }
+      { song:'An Ending (Ascent)', artist:'Brian Eno',    plays:119, note:'睡前最后一首。', hue:200 },
+      { song:'Cirrus',             artist:'Bonobo',       plays:128, note:'长途路上的背景。', hue:160 },
+      { song:'Kiara',              artist:'Bonobo',       plays:108, note:'专注时的循环。', hue:180 }
     ]
   },
   retro: {
@@ -249,7 +259,9 @@ const PROFILES = {
       { song:'Movin On',     artist:'Tom Misch',     plays:121, note:'你给它点过红心。', hue:60 },
       { song:'Plastic Love', artist:'竹内まりや',     plays:171, note:'最近的 city pop 循环。', hue:30 },
       { song:'Lovely Day',   artist:'Bill Withers',  plays:150, note:'阳光好的早晨。', hue:40 },
-      { song:'Get Lucky',    artist:'Daft Punk',     plays:138, note:'做家务必放。', hue:50 }
+      { song:'Get Lucky',    artist:'Daft Punk',     plays:138, note:'做家务必放。', hue:50 },
+      { song:"Stayin' Alive", artist:'Bee Gees',     plays:140, note:'走路自带 BGM。', hue:40 },
+      { song:'Africa',        artist:'TOTO',          plays:150, note:'怎么听都不腻。', hue:45 }
     ]
   }
 };
@@ -391,17 +403,29 @@ function buildMuseum(key){
   // 四件侧展（墙上）
   const pickable=[];
   const LW=-ROOM.w/2+0.3, RW=ROOM.w/2-0.3, BW=-ROOM.l/2+0.3;
-  const slots=[ {x:LW,z:16,ry:Math.PI/2},{x:LW,z:3,ry:Math.PI/2},{x:LW,z:-11,ry:Math.PI/2},
-                {x:RW,z:16,ry:-Math.PI/2},{x:RW,z:3,ry:-Math.PI/2},{x:RW,z:-11,ry:-Math.PI/2},
-                {x:18,z:BW,ry:0} ];
+  const slots=[ {x:LW,z:20,ry:Math.PI/2},{x:LW,z:7,ry:Math.PI/2},{x:LW,z:-7,ry:Math.PI/2},{x:LW,z:-20,ry:Math.PI/2},
+                {x:RW,z:20,ry:-Math.PI/2},{x:RW,z:7,ry:-Math.PI/2},{x:RW,z:-7,ry:-Math.PI/2},{x:RW,z:-20,ry:-Math.PI/2},
+                {x:-19,z:BW,ry:0},{x:19,z:BW,ry:0} ];
   P.songs.forEach((s,i)=>{ const sl=slots[i]; if(!sl)return;
+    const nx=Math.sin(sl.ry), nz=Math.cos(sl.ry);
     const frame=new THREE.Mesh(new THREE.BoxGeometry(3.6,4.4,0.2), matFrame); frame.position.set(sl.x, 4.4, sl.z); frame.rotation.y=sl.ry; museum.add(frame);
-    const art=panel(artTex(s.song,s.hue), 3.2, 4, st.dark?0.9:0.42); art.position.set(sl.x + (sl.x<0?0.12:-0.12), 4.4, sl.z); art.rotation.y=sl.ry;
+    const art=panel(artTex(s.song,s.hue), 3.2, 4, st.dark?0.9:0.42); art.position.set(sl.x+nx*0.13, 4.4, sl.z+nz*0.13); art.rotation.y=sl.ry;
     art.userData={song:s.song, artist:s.artist||P.artist, track:POOL[i%POOL.length]}; museum.add(art); pickable.push(art);
     const plac=panel(placardTex(s.song,s.artist||P.artist,s.plays,s.note,pal), 2.6,1.4,0.92);
-    plac.position.set(sl.x + (sl.x<0?0.14:-0.14), 1.5, sl.z); plac.rotation.y=sl.ry; museum.add(plac);
+    plac.position.set(sl.x+nx*0.5, 1.6, sl.z+nz*0.5); plac.rotation.y=sl.ry; museum.add(plac);
     reactive.push({type:'art', mesh:art});
   });
+
+  // 馆内陈设：中央地毯 + 长椅 + 天花横梁 + 镇馆之宝围栏柱
+  const carpet=new THREE.Mesh(new THREE.PlaneGeometry(7,52), new THREE.MeshStandardMaterial({color:pal.accent, roughness:1, transparent:true, opacity:0.16}));
+  carpet.rotation.x=-Math.PI/2; carpet.position.set(0,0.03,-4); museum.add(carpet);
+  const matSeat=new THREE.MeshStandardMaterial({color:pal.frame, roughness:0.6, metalness:0.3});
+  [[-13,12],[13,12],[-13,-16],[13,-16]].forEach(([bx,bz])=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.5,1.1),matSeat); b.position.set(bx,0.45,bz); b.castShadow=true; museum.add(b);
+    const t=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.12,1.1), new THREE.MeshStandardMaterial({color:pal.accent,roughness:1})); t.position.set(bx,0.72,bz); museum.add(t); });
+  for(let z=-28; z<=28; z+=14){ const beam=new THREE.Mesh(new THREE.BoxGeometry(ROOM.w,0.5,0.7), matWall); beam.position.set(0,ROOM.h-0.3,z); museum.add(beam); }
+  for(let i=0;i<4;i++){ const a=Math.PI/4+i*Math.PI/2, rx=Math.cos(a)*8.4, rz=Math.sin(a)*8.4;
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1.0,10), new THREE.MeshStandardMaterial({color:pal.strip,metalness:0.7,roughness:0.3})); post.position.set(rx,0.5,rz); museum.add(post);
+    const knob=new THREE.Mesh(new THREE.SphereGeometry(0.16,12,12), new THREE.MeshStandardMaterial({color:pal.strip,emissive:pal.strip,emissiveIntensity:0.5})); knob.position.set(rx,1.05,rz); museum.add(knob); }
 
   // 指引牌（wayfinding）
   const sign=(txt,x,y,z)=>{ const s=labelSprite(txt,'#'+pal.strip.toString(16).padStart(6,'0')); s.position.set(x,y,z); s.scale.set(4,1,1); museum.add(s); };
@@ -409,7 +433,7 @@ function buildMuseum(key){
   sign('回廊', 0, 6.5, -26);
 
   // 光束里的尘埃
-  const mn=150, mpos=new Float32Array(mn*3);
+  const mn=320, mpos=new Float32Array(mn*3);
   for(let i=0;i<mn;i++){ mpos[i*3]=(Math.random()-0.5)*ROOM.w; mpos[i*3+1]=Math.random()*ROOM.h; mpos[i*3+2]=(Math.random()-0.5)*ROOM.l; }
   const mgeo=new THREE.BufferGeometry(); mgeo.setAttribute('position',new THREE.BufferAttribute(mpos,3));
   const motes=new THREE.Points(mgeo, new THREE.PointsMaterial({ color:pal.light, size:0.05, transparent:true, opacity:0.45, depthWrite:false }));
