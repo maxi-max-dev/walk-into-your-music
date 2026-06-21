@@ -52,6 +52,7 @@
     background:rgba(10,12,22,.72); backdrop-filter:blur(10px); font-size:13px; opacity:0; transition:all .3s; pointer-events:none; border:1px solid rgba(255,255,255,.12); }
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   #loading { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; background:#0b0d14; font-size:13px; letter-spacing:.2em; opacity:.7; }
+  #flash { position:fixed; inset:0; z-index:28; background:#0b0d14; opacity:0; pointer-events:none; transition:opacity .35s; }
 </style>
 </head>
 <body>
@@ -90,6 +91,7 @@
 <div id="reticle"></div>
 <div id="hint">拖动 = 转头 · W A S D = 在馆里走 · 走近展品看讲解 · 中央 = 镇馆之宝</div>
 <div id="toast"></div>
+<div id="flash"></div>
 
 <script type="importmap">
 { "imports": {
@@ -146,6 +148,7 @@ const PROFILES = {
   }
 };
 let current='neon';
+const POOL=['assets/pool2.mp3','assets/pool4.mp3','assets/pool5.mp3','assets/pool6.mp3','assets/pool8.mp3'];
 
 /* ============ 场景 ============ */
 const app=document.getElementById('app');
@@ -176,7 +179,9 @@ function artTex(title, hue){ return tex((g,w,h)=>{
   const hl=g.createRadialGradient(w*0.32,h*0.2,0,w*0.32,h*0.2,w*0.55); hl.addColorStop(0,'rgba(255,255,255,.16)'); hl.addColorStop(1,'rgba(255,255,255,0)');
   g.fillStyle=hl; g.fillRect(0,0,w,h);
   const sh=g.createLinearGradient(0,h-230,0,h); sh.addColorStop(0,'rgba(0,0,0,0)'); sh.addColorStop(1,'rgba(0,0,0,.62)'); g.fillStyle=sh; g.fillRect(0,h-230,w,230);
-  g.fillStyle='#fff'; g.font='bold 58px -apple-system,PingFang SC,Arial'; g.textBaseline='alphabetic'; wrap(g,title,44,h-62,w-88,64);
+  g.fillStyle='#fff'; g.textBaseline='alphabetic'; let fs=58; g.font='bold '+fs+'px -apple-system,PingFang SC,Arial';
+  while(g.measureText(title).width>w-80 && fs>26){ fs-=3; g.font='bold '+fs+'px -apple-system,PingFang SC,Arial'; }
+  g.fillText(title,44,h-58);
 }, 512, 640); }
 
 function placardTex(song, artist, plays, note, pal){ return tex((g,w,h)=>{
@@ -248,7 +253,7 @@ function buildMuseum(key){
   vinyl.position.set(0,1.32,0); museum.add(vinyl);
   const vlabel=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.085,32), new THREE.MeshStandardMaterial({color:0xffffff,map:artTex(P.center.song,P.center.hue),emissive:0xffffff,emissiveMap:artTex(P.center.song,P.center.hue),emissiveIntensity:0.4}));
   vlabel.position.set(0,1.33,0); museum.add(vlabel);
-  const hero=panel(artTex(P.center.song,P.center.hue), 4, 5, st.dark?0.9:0.42); hero.position.set(0,4.4,-2.2); museum.add(hero);
+  const hero=panel(artTex(P.center.song,P.center.hue), 4, 5, st.dark?0.9:0.42); hero.position.set(0,4.4,-2.2); hero.userData={song:P.center.song,artist:P.center.artist,track:P.track}; museum.add(hero);
   const hframe=new THREE.Mesh(new THREE.BoxGeometry(4.4,5.4,0.2), matFrame); hframe.position.set(0,4.4,-2.32); museum.add(hframe);
   const hplac=panel(placardTex(P.center.song,P.center.artist,P.center.plays,P.center.note,pal),3,1.6,0.92); hplac.position.set(0,1.45,1.55); hplac.rotation.x=-0.5; museum.add(hplac);
   const crown=labelSprite('★ 镇馆之宝', '#'+pal.strip.toString(16).padStart(6,'0')); crown.position.set(0,7,0); museum.add(crown);
@@ -261,7 +266,7 @@ function buildMuseum(key){
   P.songs.forEach((s,i)=>{ const sl=slots[i];
     const frame=new THREE.Mesh(new THREE.BoxGeometry(0.2,4.4,3.6), matFrame); frame.position.set(sl.x + (sl.x<0?0.0:0.0), 4.4, sl.z); museum.add(frame);
     const art=panel(artTex(s.song,s.hue), 3.2, 4, st.dark?0.9:0.42); art.position.set(sl.x + (sl.x<0?0.12:-0.12), 4.4, sl.z); art.rotation.y=sl.ry;
-    art.userData={song:s.song}; museum.add(art); pickable.push(art);
+    art.userData={song:s.song, artist:s.artist||P.artist, track:POOL[i%POOL.length]}; museum.add(art); pickable.push(art);
     const plac=panel(placardTex(s.song,s.artist||P.artist,s.plays,s.note,pal), 2.6,1.4,0.92);
     plac.position.set(sl.x + (sl.x<0?0.14:-0.14), 1.5, sl.z); plac.rotation.y=sl.ry; museum.add(plac);
     const sp=new THREE.SpotLight(pal.light, 14, 16, Math.PI/8, 0.6, 1.3);
@@ -277,7 +282,7 @@ function buildMuseum(key){
   museum.add(motes);
 
   materialize=0; updateCard(P);
-  window.__PICK__=pickable;
+  pickable.push(hero); window.__PICK__=pickable;
   return { reactive, update(b,t){
     motes.rotation.y+=0.0004; motes.material.opacity=0.45*materialize;
     for(const r of reactive){ if(r.type==='hero'){ r.vinyl.rotation.y+=0.02+b.mid*0.08; r.vlabel.rotation.y=r.vinyl.rotation.y;
@@ -299,7 +304,11 @@ addEventListener('pointerup',e=>{ if(dragging){ if(Math.hypot(e.clientX-dx0,e.cl
 addEventListener('pointermove',e=>{ if(!dragging||flying)return; yaw-=(e.clientX-lx)*0.0026; pitch=THREE.MathUtils.clamp(pitch-(e.clientY-ly)*0.0022,-1.0,0.9); lx=e.clientX; ly=e.clientY; });
 const ray=new THREE.Raycaster(), nd=new THREE.Vector2();
 function pick(e){ if(flying||!hud.classList.contains('show'))return; nd.x=e.clientX/innerWidth*2-1; nd.y=-(e.clientY/innerHeight*2-1);
-  ray.setFromCamera(nd,camera); const hit=ray.intersectObjects(window.__PICK__||[],false)[0]; if(hit&&hit.object.userData.song) toast('🎵 '+hit.object.userData.song); }
+  ray.setFromCamera(nd,camera); const hit=ray.intersectObjects(window.__PICK__||[],false)[0];
+  if(hit&&hit.object.userData.song){ const u=hit.object.userData; playSong(u.song,u.artist,u.track); } }
+function playSong(song, artist, track){ if(!ac)initAudio(); if(ac&&ac.state==='suspended')ac.resume();
+  if(track && !audioEl.src.endsWith(track)){ audioEl.src=track; } audioEl.play().catch(()=>{}); fadeTo(0.8); musicOn=true;
+  document.getElementById('playBtn').textContent='❚❚'; set('now-song', song+(artist?' — '+artist:'')); toast('▶ 正在播放：'+song); }
 
 /* ============ 音频（真实曲目，同源加载 → 频谱驱动反应）============ */
 let ac,analyser,freq,audioEl,srcNode,musicOn=false;
@@ -325,7 +334,9 @@ document.getElementById('enterBtn').addEventListener('click',()=>{ intro.classLi
   document.getElementById('reticle').classList.add('show'); initAudio(); startMusic(); flying=true; flyT=0; setTimeout(aiToast,2600); });
 document.getElementById('playBtn').addEventListener('click',toggleMusic);
 document.querySelectorAll('#personaSwitch button').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.persona===current)return; current=b.dataset.persona;
-  document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.toggle('active',x===b)); built=buildMuseum(current); retune(); aiToast(); }));
+  document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.toggle('active',x===b));
+  const fl=document.getElementById('flash'); fl.style.opacity='0.8';
+  setTimeout(()=>{ built=buildMuseum(current); retune(); aiToast(); fl.style.opacity='0'; }, 240); }));
 addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
 function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),2400); }
 function aiToast(){ const P=PROFILES[current]; toast('🤖 AI 读了你的 '+(P.songs.length+1)+' 首歌 → 主基调：'+STYLES[P.style].label+' · 已为你布展'); }
