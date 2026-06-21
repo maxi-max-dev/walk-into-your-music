@@ -394,6 +394,11 @@ function buildMuseum(key){
   // 顶部灯带（氛围）
   [[-ROOM.w/2+0.1,Math.PI/2],[ROOM.w/2-0.1,-Math.PI/2]].forEach(([x,ry])=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(ROOM.l-2,0.12,0.12),
     new THREE.MeshBasicMaterial({color:pal.strip})); s.position.set(x,ROOM.h-0.5,0); s.rotation.y=ry; museum.add(s); });
+  // 墙裙 + 顶线（建筑细节，让墙不再像盒子）
+  const trimMat=new THREE.MeshStandardMaterial({color:pal.frame, roughness:0.5, metalness:0.4});
+  const wallTrim=(len,x,z,ry)=>{ [0.35, ROOM.h-1.0].forEach(yy=>{ const t=new THREE.Mesh(new THREE.BoxGeometry(len,0.32,0.22),trimMat); t.position.set(x,yy,z); t.rotation.y=ry; museum.add(t); }); };
+  wallTrim(ROOM.w, 0, -ROOM.l/2+0.16, 0); wallTrim(ROOM.w, 0, ROOM.l/2-0.16, 0);
+  wallTrim(ROOM.l, -ROOM.w/2+0.16, 0, Math.PI/2); wallTrim(ROOM.l, ROOM.w/2-0.16, 0, Math.PI/2);
 
   // 标题（后墙）
   const title=panel(titleTex(`2026 · ${P.name} · ${P.genre}`, pal), 16, 3.2, 1.0); title.position.set(0,7.4,-ROOM.l/2+0.12); museum.add(title);
@@ -415,6 +420,10 @@ function buildMuseum(key){
   const hframe=new THREE.Mesh(new THREE.BoxGeometry(4.4,5.4,0.2), matFrame); hframe.position.set(0,4.4,-2.32); museum.add(hframe);
   const hplac=panel(placardTex(P.center.song,P.center.artist,P.center.plays,P.center.note,pal),3,1.6,0.92); hplac.position.set(0,1.45,1.55); hplac.rotation.x=-0.5; museum.add(hplac);
   const crown=labelSprite('★ 镇馆之宝', '#'+pal.strip.toString(16).padStart(6,'0')); crown.position.set(0,7,0); museum.add(crown);
+  // 镇馆之宝光束（fake god-ray）
+  const beam=new THREE.Mesh(new THREE.ConeGeometry(3.0, ROOM.h-1.2, 28, 1, true),
+    new THREE.MeshBasicMaterial({color:pal.light, transparent:true, opacity:st.dark?0.07:0.05, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending}));
+  beam.position.set(0,(ROOM.h-1.2)/2+0.4,0); museum.add(beam);
   reactive.push({type:'hero', vinyl, vlabel, spot:heroSpot});
 
   // 四件侧展（墙上）
@@ -611,7 +620,7 @@ function animate(){ requestAnimationFrame(animate);
     if(moving){ const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
       const mv=new THREE.Vector3().addScaledVector(f,mz).addScaledVector(r,mx).normalize().multiplyScalar(MOVE*dt);
       camera.position.add(mv); camera.position.x=THREE.MathUtils.clamp(camera.position.x,-BX,BX); camera.position.z=THREE.MathUtils.clamp(camera.position.z,-BZ,BZ); }
-    camera.position.y=EYE+(moving?Math.sin(t*9)*0.06:0); }
+    camera.position.y=EYE+(moving?Math.sin(t*9)*0.06:Math.sin(t*1.2)*0.03); }
   let b={bass:0,mid:0,treble:0};
   if(analyser&&musicOn){ analyser.getByteFrequencyData(freq); const a=(x,y)=>{let s=0;for(let i=x;i<y;i++)s+=freq[i];return s/((y-x)*255);};
     b={bass:a(2,10),mid:a(16,48),treble:a(64,120)}; }
