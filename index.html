@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>走进你的音乐 · Walk Into Your Music</title>
+<style>
+  :root { --primary:#4dd0ff; --accent:#b14dff; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#05060f;
+    font-family:-apple-system,"PingFang SC","Helvetica Neue",Arial,sans-serif; color:#fff; }
+  #app { position:fixed; inset:0; } canvas { display:block; }
+
+  #intro { position:fixed; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; text-align:center; transition:opacity 1s ease;
+    background:radial-gradient(ellipse at center, rgba(12,18,48,.5), rgba(5,6,15,.92)); }
+  #intro.hidden { opacity:0; pointer-events:none; }
+  #intro .kicker { letter-spacing:.4em; font-size:12px; opacity:.6; margin-bottom:18px; }
+  #intro h1 { font-size:clamp(30px,6vw,64px); font-weight:800; line-height:1.05;
+    background:linear-gradient(90deg,var(--primary),var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #intro p { margin-top:18px; max-width:560px; opacity:.8; font-size:15px; line-height:1.7; padding:0 24px; }
+  #enterBtn { margin-top:38px; padding:15px 40px; font-size:16px; font-weight:600; color:#06121f;
+    background:linear-gradient(90deg,var(--primary),var(--accent)); border:none; border-radius:999px; cursor:pointer;
+    box-shadow:0 8px 40px rgba(77,208,255,.35); transition:transform .2s, box-shadow .2s; }
+  #enterBtn:hover { transform:translateY(-2px); box-shadow:0 12px 52px rgba(177,77,255,.5); }
+  #enterBtn small { display:block; font-weight:400; font-size:11px; opacity:.7; margin-top:3px; }
+
+  #hud { position:fixed; inset:0; z-index:20; pointer-events:none; opacity:0; transition:opacity 1s ease .6s; }
+  #hud.show { opacity:1; }
+  .panel { position:fixed; background:rgba(8,12,28,.5); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,.12); border-radius:16px; pointer-events:auto; }
+
+  #dataCard { top:22px; left:22px; padding:18px 20px; width:248px; }
+  #dataCard .who { font-size:12px; letter-spacing:.2em; opacity:.55; }
+  #dataCard .name { font-size:20px; font-weight:700; margin:4px 0 14px; }
+  #dataCard .row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-top:1px solid rgba(255,255,255,.08); }
+  #dataCard .row span:first-child { opacity:.55; }
+  #dataCard .row span:last-child { font-weight:600; color:var(--primary); text-align:right; max-width:140px; }
+
+  .switch { right:22px; padding:12px; display:flex; flex-direction:column; gap:8px; width:198px; }
+  #personaSwitch { top:22px; } #themeSwitch { top:236px; }
+  .switch .lbl { font-size:11px; letter-spacing:.16em; opacity:.5; padding:2px 6px 6px; }
+  .switch button { pointer-events:auto; padding:11px 14px; text-align:left; border-radius:10px;
+    border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:#fff; cursor:pointer; font-size:14px; transition:all .2s; }
+  .switch button .sub { display:block; font-size:11px; opacity:.55; margin-top:2px; }
+  .switch button.active { background:linear-gradient(90deg,rgba(77,208,255,.22),rgba(177,77,255,.22)); border-color:rgba(177,77,255,.6); }
+
+  #nowbar { bottom:26px; left:50%; transform:translateX(-50%); padding:12px 22px; display:flex; align-items:center; gap:16px; }
+  #playBtn { pointer-events:auto; width:42px; height:42px; border-radius:50%; flex:0 0 auto; border:1px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.06); color:#fff; cursor:pointer; font-size:15px; }
+  #nowtxt .t1 { font-size:11px; opacity:.5; letter-spacing:.15em; } #nowtxt .t2 { font-size:15px; font-weight:600; }
+  #hint { position:fixed; bottom:8px; left:50%; transform:translateX(-50%); font-size:11px; opacity:.4; z-index:20; pointer-events:none; }
+
+  #centerInfo { left:50%; top:50%; transform:translate(-50%,-50%) scale(.92); padding:22px 26px; width:300px; text-align:center;
+    opacity:0; transition:opacity .4s, transform .4s; }
+  #centerInfo.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  #centerInfo .tag { font-size:11px; letter-spacing:.25em; color:var(--accent); }
+  #centerInfo .song { font-size:26px; font-weight:800; margin:8px 0 4px; }
+  #centerInfo .artist { opacity:.7; font-size:14px; }
+  #centerInfo .plays { margin-top:14px; font-size:13px; opacity:.8; } #centerInfo .plays b { color:var(--primary); font-size:18px; }
+
+  #reticle { position:fixed; left:50%; top:50%; width:6px; height:6px; margin:-3px 0 0 -3px; border-radius:50%;
+    background:rgba(255,255,255,.5); z-index:15; opacity:0; transition:opacity .5s; pointer-events:none; }
+  #reticle.show { opacity:.6; }
+  #toast { position:fixed; bottom:92px; left:50%; transform:translateX(-50%) translateY(10px); z-index:25; padding:9px 18px;
+    border-radius:999px; background:rgba(8,12,28,.7); backdrop-filter:blur(10px); font-size:13px; opacity:0; transition:all .3s;
+    pointer-events:none; border:1px solid rgba(255,255,255,.12); }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #loading { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; background:#05060f;
+    font-size:13px; letter-spacing:.2em; opacity:.7; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="loading">正在生成你的世界…</div>
+
+<div id="intro" class="hidden">
+  <div class="kicker">WALK INTO YOUR MUSIC</div>
+  <h1>走进你的音乐</h1>
+  <p>这不是一张年度报告，也不是一个可视化。<br/>这是你这一年的听歌数据，长成的一个世界——<br/>放一首歌，走进去。</p>
+  <button id="enterBtn">进入这个世界 <small>戴上耳机更好 · 拖动 = 转头 · WASD = 走</small></button>
+</div>
+
+<div id="hud">
+  <div id="dataCard" class="panel">
+    <div class="who">你的听歌之年 · 2026 上半年</div>
+    <div class="name" id="dc-name">—</div>
+    <div class="row"><span>最常听</span><span id="dc-artist">—</span></div>
+    <div class="row"><span>主风格</span><span id="dc-genre">—</span></div>
+    <div class="row"><span>总时长</span><span id="dc-min">—</span></div>
+    <div class="row"><span>这一年的情绪</span><span id="dc-mood">—</span></div>
+  </div>
+
+  <div id="personaSwitch" class="switch panel">
+    <div class="lbl">换一组"你的数据" → 看世界变</div>
+    <button data-persona="night" class="active">深夜电子党<span class="sub">Synthwave · 清醒的孤独</span></button>
+    <button data-persona="dawn">晨光民谣派<span class="sub">Folk · 松弛的暖</span></button>
+  </div>
+
+  <div id="themeSwitch" class="switch panel">
+    <div class="lbl">换风格(内核不变，皮可换)</div>
+    <button data-theme="neon" class="active">星海 / 霓虹<span class="sub">科技感 · 发光几何</span></button>
+    <button data-theme="monument">纪念碑谷<span class="sub">低多边形 · 柔和粉彩</span></button>
+  </div>
+
+  <div id="centerInfo" class="panel">
+    <div class="tag">你最爱的一首</div>
+    <div class="song" id="ci-song">—</div>
+    <div class="artist" id="ci-artist">—</div>
+    <div class="plays">今年听了 <b id="ci-plays">0</b> 次</div>
+  </div>
+
+  <div id="nowbar" class="panel">
+    <button id="playBtn">❚❚</button>
+    <div id="nowtxt"><div class="t1">NOW PLAYING</div><div class="t2" id="now-song">—</div></div>
+  </div>
+</div>
+
+<div id="reticle"></div>
+<div id="hint">拖动 = 转头 · W A S D = 走动 · 走到中心 = 看你最爱的那首歌</div>
+<div id="toast"></div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ================= 内核 1/4：数据（persona）================= */
+const PERSONAS = {
+  night: {
+    name:'深夜电子党', artist:'ROZEN', genre:'Synthwave / Electronic', minutes:18420, mood:'清醒的孤独',
+    energy:0.85, density:1.0, tempo:122, scaleType:'minor',
+    center:{ song:'Neon Tides', artist:'ROZEN', plays:412 },
+    songs:['Neon Tides','Midnight Drive','Afterglow','Static Heart','Violet Rain'],
+    neon:   { bg:0x05060f, fog:0x0a1230, primary:0x4dd0ff, accent:0xb14dff, particle:0x7fe3ff, ground:0x0c1230 },
+    pastel: { skyTop:0xb9cdff, skyBot:0xe7d6ff, base:0x9fb4e8, alt:0xc6b6f0, accent:0xff9aa6, ground:0xdfe6ff, top:0xffd27a }
+  },
+  dawn: {
+    name:'晨光民谣派', artist:'Lin Hai', genre:'Folk / Acoustic', minutes:9260, mood:'松弛的暖',
+    energy:0.40, density:0.45, tempo:84, scaleType:'major',
+    center:{ song:'Morning Field', artist:'Lin Hai', plays:188 },
+    songs:['Morning Field','Paper Boat','Slow Sunday','Warm Static','Tea & Rain'],
+    neon:   { bg:0x0f0b06, fog:0x241a0c, primary:0xffd27a, accent:0x7ad17a, particle:0xffe2a8, ground:0x2a2012 },
+    pastel: { skyTop:0xffe6bd, skyBot:0xffd6dd, base:0xf0c79a, alt:0xd9c89a, accent:0x7fc6b0, ground:0xfff0d8, top:0xff9e7a }
+  }
+};
+let current='night', currentTheme='neon';
+
+/* ================= 场景 ================= */
+const app=document.getElementById('app');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 3000);
+const renderer=new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+app.appendChild(renderer.domElement);
+
+let world=new THREE.Group(); scene.add(world);
+let built=null, materialize=0;
+
+/* ---- 共用工具 ---- */
+function glowTexture(){
+  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const r=g.createRadialGradient(64,64,0,64,64,64);
+  r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.25,'rgba(255,255,255,.5)'); r.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=r; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);
+}
+const GLOW=glowTexture();
+function skyTexture(top,bot){
+  const c=document.createElement('canvas'); c.width=8; c.height=256; const g=c.getContext('2d');
+  const gr=g.createLinearGradient(0,0,0,256);
+  gr.addColorStop(0,'#'+top.toString(16).padStart(6,'0')); gr.addColorStop(1,'#'+bot.toString(16).padStart(6,'0'));
+  g.fillStyle=gr; g.fillRect(0,0,8,256); const t=new THREE.CanvasTexture(c); return t;
+}
+function makeLabel(text, glowHex, textColor){
+  const c=document.createElement('canvas'); c.width=256; c.height=64; const g=c.getContext('2d');
+  g.font='bold 30px -apple-system, PingFang SC, Arial'; g.textAlign='center'; g.textBaseline='middle';
+  g.shadowColor='#'+glowHex.toString(16).padStart(6,'0'); g.shadowBlur=16; g.fillStyle=textColor||'#fff';
+  g.fillText(text,128,32);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({ map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false }));
+  s.scale.set(6,1.5,1); return s;
+}
+function setCssVars(p,a){
+  document.documentElement.style.setProperty('--primary','#'+p.toString(16).padStart(6,'0'));
+  document.documentElement.style.setProperty('--accent','#'+a.toString(16).padStart(6,'0'));
+}
+
+/* ================= 内核 2/4：主题层（皮，可换；内核不变）=================
+   每个主题实现 apply(scene, world, P) → 返回 { update(bands,t) }              */
+const THEMES = {
+  /* ---------- 星海 / 霓虹 ---------- */
+  neon: {
+    apply(scene, world, P){
+      const pal=P.neon;
+      scene.background=new THREE.Color(pal.bg);
+      scene.fog=new THREE.FogExp2(pal.fog, 0.011);
+      setCssVars(pal.primary, pal.accent);
+      world.add(new THREE.AmbientLight(0xffffff,0.25));
+      const cl=new THREE.PointLight(pal.primary,2.2,140,1.5); cl.position.set(0,8,0); world.add(cl);
+      world.add(new THREE.HemisphereLight(0xffffff,0x080814,0.35));
+
+      const grid=new THREE.GridHelper(400,80,pal.primary,pal.primary);
+      grid.material.transparent=true; grid.material.opacity=0.16; world.add(grid);
+      const floor=new THREE.Mesh(new THREE.CircleGeometry(200,64),
+        new THREE.MeshStandardMaterial({ color:pal.ground, metalness:0.6, roughness:0.45 }));
+      floor.rotation.x=-Math.PI/2; floor.position.y=-0.05; world.add(floor);
+
+      const monument=new THREE.Mesh(new THREE.IcosahedronGeometry(3.2,1),
+        new THREE.MeshStandardMaterial({ color:pal.primary, emissive:pal.primary, emissiveIntensity:0.9, metalness:0.3, roughness:0.2, flatShading:true }));
+      monument.position.y=5; world.add(monument);
+      const wire=new THREE.Mesh(new THREE.IcosahedronGeometry(4.4,1),
+        new THREE.MeshBasicMaterial({ color:pal.accent, wireframe:true, transparent:true, opacity:0.4 }));
+      wire.position.y=5; world.add(wire);
+      const mg=new THREE.Sprite(new THREE.SpriteMaterial({ map:GLOW, color:pal.primary, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false }));
+      mg.scale.set(26,26,1); mg.position.set(0,5,0); world.add(mg);
+      const clab=makeLabel(P.center.song, pal.accent); clab.position.set(0,11,0); clab.scale.set(9,2.25,1); world.add(clab);
+
+      const orbs=[]; const ring=P.songs.slice(1);
+      ring.forEach((s,i)=>{ const a=i/ring.length*Math.PI*2, r=15, x=Math.cos(a)*r, z=Math.sin(a)*r;
+        const orb=new THREE.Mesh(new THREE.SphereGeometry(0.9,24,24),
+          new THREE.MeshStandardMaterial({ color:pal.accent, emissive:pal.accent, emissiveIntensity:0.8 }));
+        orb.position.set(x,2.4+Math.sin(i)*0.6,z); orb.userData={song:s,base:orb.position.y,phase:i}; world.add(orb);
+        const g=new THREE.Sprite(new THREE.SpriteMaterial({ map:GLOW, color:pal.accent, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false }));
+        g.scale.set(7,7,1); g.position.copy(orb.position); world.add(g); orb.userData.glow=g;
+        const lab=makeLabel(s,pal.primary); lab.position.set(x,orb.position.y+2.2,z); world.add(lab); orb.userData.label=lab;
+        orbs.push(orb);
+      });
+
+      const N=Math.round(6500*P.density); const pos=new Float32Array(N*3);
+      for(let i=0;i<N;i++){ const r=30+Math.random()*160, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+        pos[i*3]=r*Math.sin(ph)*Math.cos(th); pos[i*3+1]=Math.abs(r*Math.cos(ph))*0.5+2; pos[i*3+2]=r*Math.sin(ph)*Math.sin(th); }
+      const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      const stars=new THREE.Points(pg, new THREE.PointsMaterial({ color:pal.particle, size:0.7+P.energy*0.8, transparent:true, opacity:0.85, sizeAttenuation:true, blending:THREE.AdditiveBlending, depthWrite:false }));
+      world.add(stars);
+
+      window.__ORBS__=orbs;
+      return { update(b,t){
+        const sc=1+b.bass*0.55; monument.scale.setScalar(THREE.MathUtils.lerp(monument.scale.x,sc,0.25));
+        monument.material.emissiveIntensity=0.7+b.bass*1.6; monument.rotation.y+=0.005; monument.rotation.x+=0.002;
+        wire.rotation.y-=0.008; wire.scale.setScalar(1+b.mid*0.25); cl.intensity=1.8+b.bass*4;
+        orbs.forEach(o=>{ o.position.y=o.userData.base+Math.sin(t*1.5+o.userData.phase)*0.5+b.mid*1.2; o.scale.setScalar(1+b.mid*0.6);
+          if(o.userData.glow){o.userData.glow.position.y=o.position.y; o.userData.glow.material.opacity=(0.5+b.mid)*materialize;}
+          if(o.userData.label)o.userData.label.position.y=o.position.y+2.2; });
+        stars.rotation.y+=0.0008+b.mid*0.004; stars.material.opacity=0.85*materialize;
+      }};
+    }
+  },
+
+  /* ---------- 纪念碑谷（低多边形粉彩）---------- */
+  monument: {
+    apply(scene, world, P){
+      const pal=P.pastel;
+      scene.background=skyTexture(pal.skyTop, pal.skyBot);
+      scene.fog=new THREE.Fog(pal.skyBot, 40, 170);
+      setCssVars(pal.base, pal.accent);
+      const mat=(c,opts={})=>new THREE.MeshStandardMaterial({ color:c, roughness:0.95, metalness:0.0, flatShading:true, ...opts });
+
+      world.add(new THREE.HemisphereLight(pal.skyTop, pal.ground, 0.9));
+      const sun=new THREE.DirectionalLight(0xfff4e2, 1.15); sun.position.set(28,46,20);
+      sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+      const d=70; Object.assign(sun.shadow.camera,{left:-d,right:d,top:d,bottom:-d,near:1,far:200}); sun.shadow.camera.updateProjectionMatrix();
+      world.add(sun); world.add(new THREE.AmbientLight(0xffffff,0.25));
+
+      // 地台（圆台）
+      const ground=new THREE.Mesh(new THREE.CylinderGeometry(34,34,2,48), mat(pal.ground));
+      ground.position.y=-1; ground.receiveShadow=true; world.add(ground);
+      // 几圈台阶感的矮台
+      [ [24,1.4,0,0], [15,3.0,0,0] ].forEach(([r,h])=>{
+        const step=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,40), mat(pal.base,{color:pal.base}));
+        step.position.y=h/2-0.2; step.receiveShadow=true; step.castShadow=true; step.material.color.offsetHSL(0,0, -0.04); world.add(step);
+      });
+
+      // 中心阶梯塔 = 你最爱的歌
+      const tower=new THREE.Group(); tower.position.y=2.6; world.add(tower);
+      const steps=6;
+      for(let i=0;i<steps;i++){ const s=6.4-i*0.85; const box=new THREE.Mesh(new THREE.BoxGeometry(s,1.4,s), mat(i%2? pal.alt:pal.base));
+        box.position.y=i*1.4; box.castShadow=true; box.receiveShadow=true; tower.add(box); }
+      const apex=new THREE.Mesh(new THREE.OctahedronGeometry(1.9,0), mat(pal.top,{emissive:pal.top, emissiveIntensity:0.5}));
+      apex.position.y=steps*1.4+1.3; apex.castShadow=true; tower.add(apex);
+      const clab=makeLabel(P.center.song, pal.skyBot, '#2c2740'); clab.position.set(0, steps*1.4+5.0, 0); clab.scale.set(9,2.25,1); world.add(clab);
+
+      // 环形浮台 = top 歌
+      const orbs=[]; const ring=P.songs.slice(1);
+      ring.forEach((s,i)=>{ const a=i/ring.length*Math.PI*2, r=13, x=Math.cos(a)*r, z=Math.sin(a)*r;
+        const plat=new THREE.Mesh(new THREE.CylinderGeometry(2,2,0.6,6), mat(pal.base)); plat.position.set(x,2.0,z); plat.castShadow=plat.receiveShadow=true; world.add(plat);
+        const shape=new THREE.Mesh(new THREE.OctahedronGeometry(1.0,0), mat(pal.accent,{emissive:pal.accent, emissiveIntensity:0.25}));
+        shape.position.set(x,3.7,z); shape.castShadow=true; shape.userData={song:s,base:3.7,phase:i}; world.add(shape);
+        const lab=makeLabel(s, pal.skyBot, '#2c2740'); lab.position.set(x,5.4,z); world.add(lab); shape.userData.label=lab;
+        orbs.push(shape);
+      });
+
+      // 漂浮微粒（柔和，不是星海）
+      const N=Math.round(160*P.density+40); const mg=new THREE.Group();
+      for(let i=0;i<N;i++){ const m=new THREE.Mesh(new THREE.TetrahedronGeometry(0.18+Math.random()*0.18),
+        mat(i%2?pal.alt:pal.accent)); m.position.set((Math.random()-0.5)*120, 2+Math.random()*40, (Math.random()-0.5)*120);
+        m.userData.sp=0.2+Math.random()*0.4; mg.add(m); }
+      world.add(mg);
+
+      window.__ORBS__=orbs;
+      return { update(b,t){
+        tower.rotation.y+=0.003; apex.rotation.y+=0.01; apex.rotation.x+=0.006;
+        apex.scale.setScalar(THREE.MathUtils.lerp(apex.scale.x, 1+b.bass*0.5, 0.2));
+        apex.material.emissiveIntensity=0.4+b.bass*0.9;
+        orbs.forEach(o=>{ o.rotation.y+=0.01; o.position.y=o.userData.base+Math.sin(t*1.1+o.userData.phase)*0.35+b.mid*0.7;
+          o.scale.setScalar(1+b.mid*0.35); if(o.userData.label)o.userData.label.position.y=o.position.y+1.7; });
+        mg.children.forEach((m,i)=>{ m.position.y+=Math.sin(t*0.6+i)*0.004*60*0.016*m.userData.sp+0.0; m.rotation.x+=0.004; m.rotation.y+=0.003;
+          m.position.y=2+((m.position.y-2+0.02)% 40); });
+      }};
+    }
+  }
+};
+
+/* ================= 内核 3/4：构建 / 切换 ================= */
+function disposeWorld(){
+  world.traverse(o=>{ if(o.geometry)o.geometry.dispose();
+    if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m.map&&m.map.dispose)m.map.dispose(); m.dispose(); }); } });
+  scene.remove(world); world=new THREE.Group(); scene.add(world);
+}
+function rebuild(){
+  disposeWorld(); const P=PERSONAS[current];
+  built=THEMES[currentTheme].apply(scene, world, P);
+  materialize=0; updateDataCard(P);
+}
+function updateDataCard(P){
+  dc('dc-name',P.name); dc('dc-artist',P.artist); dc('dc-genre',P.genre);
+  dc('dc-min',P.minutes.toLocaleString()+' 分钟'); dc('dc-mood',P.mood);
+  dc('ci-song',P.center.song); dc('ci-artist',P.center.artist); dc('ci-plays',P.center.plays);
+  dc('now-song',P.center.song+' — '+P.center.artist);
+}
+function dc(id,v){ document.getElementById(id).textContent=v; }
+
+/* ================= 内核 4/4：第一人称 + 音频 ================= */
+const EYE=2.6, MOVE=16, BOUND=62;
+let yaw=0, pitch=-0.05, dragging=false, lastX=0, lastY=0, downX=0, downY=0;
+const keys={};
+addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+const dom=renderer.domElement;
+dom.addEventListener('pointerdown',e=>{ dragging=true; lastX=downX=e.clientX; lastY=downY=e.clientY; });
+addEventListener('pointerup',e=>{ if(dragging){ const moved=Math.hypot(e.clientX-downX,e.clientY-downY); if(moved<5) tryPick(e); } dragging=false; });
+addEventListener('pointermove',e=>{ if(!dragging||flying) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+  yaw-=dx*0.0028; pitch=THREE.MathUtils.clamp(pitch-dy*0.0024,-1.1,0.9); });
+
+const ray=new THREE.Raycaster(), nd=new THREE.Vector2();
+function tryPick(e){ if(flying||!hud.classList.contains('show'))return;
+  nd.x=e.clientX/innerWidth*2-1; nd.y=-(e.clientY/innerHeight*2-1); ray.setFromCamera(nd,camera);
+  const hit=ray.intersectObjects(window.__ORBS__||[],false)[0]; if(hit&&hit.object.userData.song) toast('♪ '+hit.object.userData.song); }
+
+/* 音频（程序化免版权 demo 曲 + 分析） */
+let ac,master,analyser,freq,musicOn=false,schedTimer=null,next16=0,step16=0,tempo=120,scaleType='minor',chordIdx=0;
+const SCALES={minor:[0,3,5,7,10],major:[0,2,4,7,9]}, PROG=[0,-2,3,-4], midiToFreq=m=>440*Math.pow(2,(m-69)/12);
+function initAudio(){ if(ac)return; ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createGain(); master.gain.value=0; analyser=ac.createAnalyser(); analyser.fftSize=1024;
+  freq=new Uint8Array(analyser.frequencyBinCount); master.connect(analyser); analyser.connect(ac.destination); }
+function voice(type,f,t,dur,peak){ const o=ac.createOscillator(),g=ac.createGain(); o.type=type; o.frequency.value=f;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+0.01); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+0.05); }
+function kick(t){ const o=ac.createOscillator(),g=ac.createGain(); o.type='sine';
+  o.frequency.setValueAtTime(135,t); o.frequency.exponentialRampToValueAtTime(42,t+0.14);
+  g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.22); o.connect(g); g.connect(master); o.start(t); o.stop(t+0.24); }
+function scheduleStep(s,t){ const P=PERSONAS[current], scale=SCALES[scaleType], root=(scaleType==='minor'?45:48)+PROG[chordIdx];
+  if(s===0){ [0,7,12].forEach(o=>voice('sawtooth',midiToFreq(root+o),t,1.9,0.05)); voice('triangle',midiToFreq(root-12),t,1.9,0.06); }
+  if(P.energy>0.6? s%4===0 : s%8===0) kick(t);
+  if(s%2===0){ const deg=scale[(s/2)%scale.length], oct=12*(1+((s/2)%2)); voice('square',midiToFreq(root+deg+oct),t,0.28,0.05+P.energy*0.05); } }
+function scheduler(){ const s16=(60/tempo)/4; while(next16<ac.currentTime+0.12){ scheduleStep(step16,next16); next16+=s16; step16=(step16+1)%16; if(step16===0)chordIdx=(chordIdx+1)%PROG.length; } }
+function startMusic(){ const P=PERSONAS[current]; tempo=P.tempo; scaleType=P.scaleType; if(ac.state==='suspended')ac.resume();
+  master.gain.cancelScheduledValues(ac.currentTime); master.gain.setValueAtTime(master.gain.value,ac.currentTime);
+  master.gain.linearRampToValueAtTime(0.5,ac.currentTime+3); next16=ac.currentTime+0.1; step16=0; chordIdx=0;
+  if(schedTimer)clearInterval(schedTimer); schedTimer=setInterval(scheduler,25); musicOn=true; document.getElementById('playBtn').textContent='❚❚'; }
+function toggleMusic(){ if(!ac)return; if(musicOn){ clearInterval(schedTimer); schedTimer=null;
+  master.gain.linearRampToValueAtTime(0.0001,ac.currentTime+0.4); musicOn=false; document.getElementById('playBtn').textContent='▶'; } else startMusic(); }
+function retune(){ const P=PERSONAS[current]; tempo=P.tempo; scaleType=P.scaleType; }
+
+/* ================= 入场 / UI 事件 ================= */
+let flying=false, flyT=0;
+const clock=new THREE.Clock();
+const intro=document.getElementById('intro'), hud=document.getElementById('hud');
+const CAM_START=new THREE.Vector3(0,75,120), CAM_HOME=new THREE.Vector3(0,EYE,28);
+camera.position.copy(CAM_START);
+
+document.getElementById('enterBtn').addEventListener('click',()=>{
+  intro.classList.add('hidden'); hud.classList.add('show'); document.getElementById('reticle').classList.add('show');
+  initAudio(); startMusic(); flying=true; flyT=0;
+});
+document.getElementById('playBtn').addEventListener('click',toggleMusic);
+document.querySelectorAll('#personaSwitch button').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.persona===current)return; current=b.dataset.persona;
+  document.querySelectorAll('#personaSwitch button').forEach(x=>x.classList.toggle('active',x===b));
+  rebuild(); retune(); toast('世界已重建：'+PERSONAS[current].name);
+}));
+document.querySelectorAll('#themeSwitch button').forEach(b=>b.addEventListener('click',()=>{
+  if(b.dataset.theme===currentTheme)return; currentTheme=b.dataset.theme;
+  document.querySelectorAll('#themeSwitch button').forEach(x=>x.classList.toggle('active',x===b));
+  rebuild(); toast('风格已切换：'+(currentTheme==='neon'?'星海 / 霓虹':'纪念碑谷')+'（内核没变）');
+}));
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove('show'),1800); }
+const easeInOut=t=>t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+
+/* ================= 主循环 ================= */
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.05), t=clock.elapsedTime;
+  if(materialize<1) materialize=Math.min(1,materialize+dt*0.7);
+
+  if(flying){
+    flyT+=dt/4.2; const k=easeInOut(Math.min(flyT,1));
+    camera.position.lerpVectors(CAM_START,CAM_HOME,k);
+    camera.lookAt(0,4,0);
+    const e=new THREE.Euler().setFromQuaternion(camera.quaternion,'YXZ'); yaw=e.y; pitch=e.x;
+    if(flyT>=1) flying=false;
+  } else {
+    camera.rotation.order='YXZ'; camera.rotation.y=yaw; camera.rotation.x=pitch;
+    let mx=0,mz=0; if(keys['w'])mz+=1; if(keys['s'])mz-=1; if(keys['a'])mx-=1; if(keys['d'])mx+=1;
+    if(mx||mz){ const fwd=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)), right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+      const v=new THREE.Vector3().addScaledVector(fwd,mz).addScaledVector(right,mx).normalize().multiplyScalar(MOVE*dt);
+      camera.position.add(v); camera.position.x=THREE.MathUtils.clamp(camera.position.x,-BOUND,BOUND);
+      camera.position.z=THREE.MathUtils.clamp(camera.position.z,-BOUND,BOUND); camera.position.y=EYE; }
+  }
+
+  let bands={bass:0,mid:0,treble:0};
+  if(analyser&&musicOn){ analyser.getByteFrequencyData(freq);
+    const avg=(a,b)=>{let s=0;for(let i=a;i<b;i++)s+=freq[i];return s/((b-a)*255);};
+    bands={bass:avg(2,10),mid:avg(16,48),treble:avg(64,120)}; }
+  if(built) built.update(bands,t);
+
+  const dist=Math.hypot(camera.position.x,camera.position.z);
+  document.getElementById('centerInfo').classList.toggle('show', dist<14 && !flying);
+
+  renderer.render(scene,camera);
+}
+
+/* ================= 启动 ================= */
+rebuild(); animate();
+setTimeout(()=>{ document.getElementById('loading').style.display='none'; intro.classList.remove('hidden'); },400);
+</script>
+</body>
+</html>
