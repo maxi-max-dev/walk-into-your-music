@@ -121,9 +121,9 @@
   </div>
   <div id="personaSwitch" class="panel">
     <div class="lbl">换一份歌单 → AI 重新布展</div>
-    <button data-persona="neon" class="active">霓虹夜行<span class="sub">Synthwave · The Weeknd…</span></button>
+    <button data-persona="classical" class="active">古典沉思<span class="sub">Neoclassical · Einaudi…</span></button>
+    <button data-persona="neon">霓虹夜行<span class="sub">Synthwave · The Weeknd…</span></button>
     <button data-persona="folk">晨光民谣<span class="sub">Folk · Bon Iver…</span></button>
-    <button data-persona="classical">古典沉思<span class="sub">Neoclassical · Einaudi…</span></button>
     <button data-persona="cyber">暗潮赛博<span class="sub">Industrial · Billie…</span></button>
     <button data-persona="nature">山系治愈<span class="sub">Chillwave · Tycho…</span></button>
     <button data-persona="retro">复古胶片<span class="sub">Soul · EW&amp;F…</span></button>
@@ -265,7 +265,7 @@ const PROFILES = {
     ]
   }
 };
-let current='neon';
+let current='classical';
 const POOL=['assets/pool2.mp3','assets/pool4.mp3','assets/pool5.mp3','assets/pool6.mp3','assets/pool8.mp3'];
 
 /* ============ 场景 ============ */
@@ -427,6 +427,16 @@ function buildMuseum(key){
     const post=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,1.0,10), new THREE.MeshStandardMaterial({color:pal.strip,metalness:0.7,roughness:0.3})); post.position.set(rx,0.5,rz); museum.add(post);
     const knob=new THREE.Mesh(new THREE.SphereGeometry(0.16,12,12), new THREE.MeshStandardMaterial({color:pal.strip,emissive:pal.strip,emissiveIntensity:0.5})); knob.position.set(rx,1.05,rz); museum.add(knob); }
 
+  // 更多陈设：沿廊展台立柱(带雕塑) + 垂幅 + 壁灯
+  const matPed=new THREE.MeshStandardMaterial({color:pal.frame, roughness:0.5, metalness:0.4});
+  [[-15,20],[-15,-4],[-15,-22],[15,20],[15,-4],[15,-22]].forEach(([px,pz])=>{
+    const ped=new THREE.Mesh(new THREE.CylinderGeometry(0.7,0.85,1.5,8), matPed); ped.position.set(px,0.75,pz); ped.castShadow=true; museum.add(ped);
+    const obj=new THREE.Mesh(new THREE.OctahedronGeometry(0.6,0), new THREE.MeshStandardMaterial({color:pal.accent,emissive:pal.accent,emissiveIntensity:0.75})); obj.position.set(px,2.15,pz); museum.add(obj); });
+  [[-7,15],[7,15],[-7,-1],[7,-1]].forEach(([bx,bz])=>{ const ban=new THREE.Mesh(new THREE.PlaneGeometry(2.4,6),
+    new THREE.MeshStandardMaterial({color:pal.accent, emissive:pal.accent, emissiveIntensity:0.22, roughness:1, side:THREE.DoubleSide, transparent:true, opacity:0.88})); ban.position.set(bx,7.2,bz); museum.add(ban); });
+  for(let z=20; z>=-22; z-=8){ [-ROOM.w/2+0.3, ROOM.w/2-0.3].forEach(sx=>{
+    const sc=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.7,0.28), new THREE.MeshBasicMaterial({color:pal.strip})); sc.position.set(sx,5.7,z); museum.add(sc); }); }
+
   // 指引牌（wayfinding）
   const sign=(txt,x,y,z)=>{ const s=labelSprite(txt,'#'+pal.strip.toString(16).padStart(6,'0')); s.position.set(x,y,z); s.scale.set(4,1,1); museum.add(s); };
   sign('主题展厅 A', -ROOM.w/2+7, 6, 8); sign('主题展厅 B', ROOM.w/2-7, 6, 8);
@@ -501,7 +511,7 @@ function renderRecord(){
   document.documentElement.style.setProperty('--primary','#'+pal.light.toString(16).padStart(6,'0'));
   document.documentElement.style.setProperty('--accent','#'+pal.accent.toString(16).padStart(6,'0'));
   const pk=document.getElementById('rec-pick');
-  if(!pk.childElementCount){ Object.keys(PROFILES).forEach(k=>{ const b=document.createElement('button'); b.textContent=PROFILES[k].name; b.dataset.k=k; b.onclick=()=>{ current=k; renderRecord(); }; pk.appendChild(b); }); }
+  if(!pk.childElementCount){ ['classical','neon','folk','cyber','nature','retro'].forEach(k=>{ const b=document.createElement('button'); b.textContent=PROFILES[k].name; b.dataset.k=k; b.onclick=()=>{ current=k; renderRecord(); }; pk.appendChild(b); }); }
   [...pk.children].forEach(b=>b.classList.toggle('active', b.dataset.k===current));
   set('r-count', P.songs.length+1); set('r-min', P.minutes.toLocaleString()); set('r-artist', P.artist); set('r-style', STYLES[P.style].label);
   const all=[P.center, ...P.songs], list=document.getElementById('rec-list'); list.innerHTML='';
